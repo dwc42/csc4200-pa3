@@ -1,0 +1,5 @@
+{
+	"scripts": {
+		"update_code": "node ./src/node/copy_files.mjs"
+	}
+}
