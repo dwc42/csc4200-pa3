@@ -12,21 +12,24 @@ int client(int argc, char *argv[]);
  */
 int main(int argc, char *argv[])
 {
+	ClientConfig clientConfig = parseClientArgs(argc, argv);
 	int pid = fork();
 	if (!pid)
 	{
 		printf("child: %d\n", pid);
-		client(argc, argv);
+		client(clientConfig);
 	}
 	else
 	{
+
 		printf("parent: %d\n", pid);
-		client(argc, argv);
+		clientConfig.filePath = "test1.txt";
+		client(clientConfig);
 	}
 }
-int client(int argc, char *argv[])
+int client(ClientConfig clientConfig)
 {
-	ClientConfig clientConfig = parseClientArgs(argc, argv);
+
 	if (clientConfig.logfilePath == NULL)
 	{
 		printf("clientConfig.logfilePath == NULL");
