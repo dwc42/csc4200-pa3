@@ -188,12 +188,12 @@ bool createConnection(int socket_client, ClientConfig clientConfig, struct socka
 		return false;
 	}
 
-	if (connect(socket_client, (struct sockaddr *)server_addr, sizeof(struct sockaddr_in)) < 0)
-	{
-		perror("connection failed");
-		return false;
-	}
-	printf("Success: Connected to server at %s:%d\n", clientConfig.serverIp, clientConfig.port);
+	// if (connect(socket_client, (struct sockaddr *)server_addr, sizeof(struct sockaddr_in)) < 0)
+	// {
+	// 	perror("connection failed");
+	// 	return false;
+	// }
+	printf("Started Handshake to server at %s:%d\n", clientConfig.serverIp, clientConfig.port);
 
 	Packet packetSYN = make_packet();
 	// ISN
