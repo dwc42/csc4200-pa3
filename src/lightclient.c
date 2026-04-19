@@ -27,7 +27,11 @@ int main(int argc, char *argv[])
 		printf("parent: %d\n", pid);
 		clientConfig.filePath = "test1.txt";
 		client(clientConfig);
-		waitpid();
+		int status = 0;
+		if (waitpid(pid, &status, 0) < 0)
+		{
+			perror("waitpid failed");
+		}
 	}
 }
 int client(ClientConfig clientConfig)

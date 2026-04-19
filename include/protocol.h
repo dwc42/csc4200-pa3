@@ -31,6 +31,7 @@
  */
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -49,6 +50,7 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <sys/wait.h>
 #endif
 typedef enum PacketType
 {
