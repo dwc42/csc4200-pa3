@@ -10,6 +10,7 @@ int client(ClientConfig clientConfig);
 7. Send ACK (flags = `FLAG_ACK`, seq = client_isn + 1, ack = server_isn + 1).
 8. Print "Handshake complete."
  */
+
 int main(int argc, char *argv[])
 {
 	int pid = fork();
@@ -21,10 +22,12 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
+
 		ClientConfig clientConfig = parseClientArgs(argc, argv);
 		printf("parent: %d\n", pid);
 		clientConfig.filePath = "test1.txt";
 		client(clientConfig);
+		waitpid();
 	}
 }
 int client(ClientConfig clientConfig)
