@@ -27,12 +27,9 @@ int main(int argc, char *argv[])
 		printf("parent: %d\n", pid);
 		clientConfig.filePath = "test1.txt";
 		client(clientConfig);
-		int status = 0;
-		if (waitpid(pid, &status, 0) < 0)
-		{
-			perror("waitpid failed");
-		}
+		wait(NULL);
 	}
+	exit(EXIT_SUCCESS);
 }
 int client(ClientConfig clientConfig)
 {
@@ -40,22 +37,22 @@ int client(ClientConfig clientConfig)
 	if (clientConfig.logfilePath == NULL)
 	{
 		printf("clientConfig.logfilePath == NULL");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	// else if (clientConfig.port < 1024)
 	// {
 	// 	printf("clientConfig.port < 1024");
-	// 	exit(EXIT_FAILURE);
+	// 	return EXIT_FAILURE;
 	// }
 	else if (clientConfig.serverIp == NULL)
 	{
 		printf("clientConfig.serverIp == NULL");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	else if (clientConfig.filePath == NULL)
 	{
 		printf("clientConfig.filePath == NULL");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 
 	struct sockaddr_in server_addr;
@@ -66,13 +63,13 @@ int client(ClientConfig clientConfig)
 	if (socket_client < 0)
 	{
 		perror("socket creation failed");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	if (!createConnection(socket_client, clientConfig, &server_addr, &client_ISN))
 	{
 		// connection is already closed by this point;
 		printf("Handshake failed.\n");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	};
 	printf("Handshake complete.\n");
 	// printf("test\n");
@@ -90,7 +87,7 @@ int client(ClientConfig clientConfig)
 	{
 		printf("file not found\n");
 		close(socket_client);
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	printf("file found at: %s\n", clientConfig.filePath);
 	hash_file(clientConfig.filePath);
@@ -132,7 +129,7 @@ int client(ClientConfig clientConfig)
 				{
 					close(socket_client);
 					perror("send packet failed");
-					exit(EXIT_FAILURE);
+					return EXIT_FAILURE;
 				}
 				log_packet(packet, clientConfig.logfilePath, Send);
 				char acknowledgementPacketRaw[HEADER_SIZE];
@@ -184,7 +181,7 @@ int client(ClientConfig clientConfig)
 			{
 				close(socket_client);
 				perror("send packet failed");
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			}
 			log_packet(packet, clientConfig.logfilePath, Send);
 			char acknowledgementPacketRaw[HEADER_SIZE];
@@ -212,7 +209,7 @@ int client(ClientConfig clientConfig)
 			free(filePathToSend);
 			close(socket_client);
 			printf("failed to send file\n");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		}
 		else
 		{
@@ -259,11 +256,11 @@ int client(ClientConfig clientConfig)
 		free(filePathToSend);
 		close(socket_client);
 		printf("failed to send file\n");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	printf("File Sent\nConnection closed cleanly.\n");
 	free(finishedPacketRaw);
 	free(filePathToSend);
 	close(socket_client);
-	exit(EXIT_SUCCESS);
+	return EXIT_SUCCESS;
 }
