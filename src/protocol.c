@@ -395,7 +395,14 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			continue;
 		}
 		ConnectionData connectionData = {server_addr, &client_addr, &clientISN, &initialSequenceNumber};
-		callback(server_socket, serverConfig, connectionData);
+		int pId = fork();
+		if (!pId)
+		{
+			printf("child: %d", pId);
+			callback(server_socket, serverConfig, connectionData);
+			break;
+		}
+		printf("parent: %d", pId);
 		printf("Waiting for next client...\n");
 	}
 	return true; // should never happen

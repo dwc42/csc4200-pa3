@@ -15,12 +15,12 @@ int main(int argc, char *argv[])
 	int pid = fork();
 	if (!pid)
 	{
-		printf("parent: %d\n", pid);
+		printf("child: %d\n", pid);
 		client(argc, argv);
 	}
 	else
 	{
-		printf("child: %d\n", pid);
+		printf("parent: %d\n", pid);
 		client(argc, argv);
 	}
 }
