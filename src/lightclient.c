@@ -1,5 +1,5 @@
 #include "../include/protocol.h"
-int client(int argc, char *argv[]);
+int client(ClientConfig clientConfig);
 /**
  * 1. Create a UDP socket with `socket(AF_INET, SOCK_DGRAM, 0)`.
 2. Set `SO_RCVTIMEO` to `{TIMEOUT_SEC, TIMEOUT_USEC}`.
