@@ -341,63 +341,64 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			continue;
 		}
 		free(clientPacketSYN.payload);
-		Packet packetSYN = make_packet();
-		packetSYN.header.sequenceNumber = initialSequenceNumber;
-		packetSYN.header.acknowledgmentNumber = clientISN + 1;
-		packetSYN.header.synchronizeSequence = 1;
-		packetSYN.header.acknowledgmentValid = 1;
-		packetSYN.header.payloadLength = 0;
-		char *serializedPacketSYN = packet_serialize(packetSYN);
-
-		uint32_t retries = 0;
-		Packet clientPacketACK;
-		char bufferClientRawPacketACK[HEADER_SIZE];
-		do
-		{
-			if (sendto(server_socket, serializedPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, client_addr_len) < 0)
-			{
-				perror("send SYN failed");
-				continue;
-			};
-			log_packet(packetSYN, serverConfig.logfilePath, Send);
-			struct timeval timeout = {TIMEOUT_SEC, TIMEOUT_USEC};
-			if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-			{
-				perror("setsockopt failed");
-				continue;
-			}
-			if (recvfrom(server_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
-			{
-				perror("timeout or recv failed, retransmit?");
-				continue;
-			}
-			clientPacketACK = packet_deserialize(bufferClientRawPacketACK);
-			log_packet(clientPacketACK, serverConfig.logfilePath, Receive);
-			if (!clientPacketACK.header.acknowledgmentValid || clientPacketACK.header.synchronizeSequence)
-			{
-				printf("synchronizeSequence not 1 or acknowledgmentValid not 0 flags, retransmit?\n");
-				continue;
-			}
-			if (clientPacketACK.header.acknowledgmentNumber != (initialSequenceNumber + 1))
-			{
-				printf("acknowledgmentNumber != initialSequenceNumber+1, retransmit?\n");
-				continue;
-			}
-			printf("recv Client ACK\n");
-			break;
-		} while (++retries < MAX_RETRIES);
-		free(clientPacketACK.payload);
-		free(serializedPacketSYN);
-		if (retries >= MAX_RETRIES)
-		{
-			perror("MAX_RETRIES, closed connection");
-			// exit(EXIT_FAILURE);
-			continue;
-		}
-		ConnectionData connectionData = {server_addr, &client_addr, &clientISN, &initialSequenceNumber};
 		int pId = fork();
 		if (!pId)
 		{
+			Packet packetSYN = make_packet();
+			packetSYN.header.sequenceNumber = initialSequenceNumber;
+			packetSYN.header.acknowledgmentNumber = clientISN + 1;
+			packetSYN.header.synchronizeSequence = 1;
+			packetSYN.header.acknowledgmentValid = 1;
+			packetSYN.header.payloadLength = 0;
+			char *serializedPacketSYN = packet_serialize(packetSYN);
+
+			uint32_t retries = 0;
+			Packet clientPacketACK;
+			char bufferClientRawPacketACK[HEADER_SIZE];
+			do
+			{
+				if (sendto(server_socket, serializedPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, client_addr_len) < 0)
+				{
+					perror("send SYN failed");
+					continue;
+				};
+				log_packet(packetSYN, serverConfig.logfilePath, Send);
+				struct timeval timeout = {TIMEOUT_SEC, TIMEOUT_USEC};
+				if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+				{
+					perror("setsockopt failed");
+					continue;
+				}
+				if (recvfrom(server_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
+				{
+					perror("timeout or recv failed, retransmit?");
+					continue;
+				}
+				clientPacketACK = packet_deserialize(bufferClientRawPacketACK);
+				log_packet(clientPacketACK, serverConfig.logfilePath, Receive);
+				if (!clientPacketACK.header.acknowledgmentValid || clientPacketACK.header.synchronizeSequence)
+				{
+					printf("synchronizeSequence not 1 or acknowledgmentValid not 0 flags, retransmit?\n");
+					continue;
+				}
+				if (clientPacketACK.header.acknowledgmentNumber != (initialSequenceNumber + 1))
+				{
+					printf("acknowledgmentNumber != initialSequenceNumber+1, retransmit?\n");
+					continue;
+				}
+				printf("recv Client ACK\n");
+				break;
+			} while (++retries < MAX_RETRIES);
+			free(clientPacketACK.payload);
+			free(serializedPacketSYN);
+			if (retries >= MAX_RETRIES)
+			{
+				perror("MAX_RETRIES, closed connection");
+				// exit(EXIT_FAILURE);
+				continue;
+			}
+			ConnectionData connectionData = {server_addr, &client_addr, &clientISN, &initialSequenceNumber};
+
 			printf("child: %d", pId);
 			callback(server_socket, serverConfig, connectionData);
 			break;
