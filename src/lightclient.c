@@ -258,4 +258,5 @@ int client(ClientConfig clientConfig)
 	free(finishedPacketRaw);
 	free(filePathToSend);
 	close(socket_client);
+	exit(EXIT_SUCCESS);
 }
