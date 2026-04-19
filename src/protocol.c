@@ -290,6 +290,33 @@ ServerConfig parseServerArgs(int argc, char *argv[])
 	}
 	return serverConfig;
 }
+
+bool createServerWorkerSocket(int *worker_socket, struct sockaddr_in *worker_addr, uint16_t *worker_port)
+{
+	*worker_socket = socket(AF_INET, SOCK_DGRAM, 0);
+	if (*worker_socket < 0)
+	{
+		perror("socket dup failed");
+		return false;
+	}
+	memset(worker_addr, 0, sizeof(struct sockaddr_in));
+	worker_addr->sin_family = AF_INET;
+	worker_addr->sin_addr.s_addr = INADDR_ANY;
+	worker_addr->sin_port = htons(0);
+	if (bind(*worker_socket, (struct sockaddr *)worker_addr, sizeof(struct sockaddr_in)) < 0)
+	{
+		perror("bind failed");
+		return false;
+	};
+	socklen_t len = sizeof(*worker_addr);
+	if (getsockname(*worker_socket, (struct sockaddr *)worker_addr, &len) < 0)
+	{
+		perror("getsockname failed");
+		return false;
+	}
+	*worker_port = ntohs(worker_addr->sin_port);
+	return true;
+}
 bool startListening(int server_socket, ServerConfig serverConfig, struct sockaddr_in *server_addr, OnConnectionCallback callback)
 {
 	if (server_socket < 0)
@@ -301,7 +328,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 	memset(server_addr, 0, sizeof(struct sockaddr_in));
 	server_addr->sin_family = AF_INET;
 	server_addr->sin_addr.s_addr = INADDR_ANY;
-	server_addr->sin_port = htons(REMOTE_SERVER_PORT);
+	server_addr->sin_port = htons(serverConfig.port);
 	if (bind(server_socket, (struct sockaddr *)server_addr, sizeof(struct sockaddr_in)) < 0)
 	{
 		perror("bind failed");
@@ -326,24 +353,28 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			perror("receive syc failed");
 			continue;
 		}
-
-		Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN);
-		log_packet(clientPacketSYN, serverConfig.logfilePath, Receive);
-
-		srand((unsigned)time(NULL) ^ getpid());
-		uint32_t initialSequenceNumber = rand();
-		clientISN = clientPacketSYN.header.sequenceNumber;
-		printf("Client ISN: %u, Server ISN: %u\n", clientISN, initialSequenceNumber);
-		if (!clientPacketSYN.header.synchronizeSequence)
-		{
-			perror("packet.header.synchronizeSequence not 1");
-			free(clientPacketSYN.payload);
-			continue;
-		}
-		free(clientPacketSYN.payload);
 		int pId = fork();
 		if (!pId)
 		{
+			int worker_socket;
+			struct sockaddr_in worker_addr;
+			uint16_t worker_port;
+			createServerWorkerSocket(&worker_socket, &worker_addr, &worker_port);
+			Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN);
+			log_packet(clientPacketSYN, serverConfig.logfilePath, Receive);
+
+			srand((unsigned)time(NULL) ^ getpid());
+			uint32_t initialSequenceNumber = rand();
+			clientISN = clientPacketSYN.header.sequenceNumber;
+			printf("Client ISN: %u, Server ISN: %u\n", clientISN, initialSequenceNumber);
+			if (!clientPacketSYN.header.synchronizeSequence)
+			{
+				perror("packet.header.synchronizeSequence not 1");
+				free(clientPacketSYN.payload);
+				continue;
+			}
+			free(clientPacketSYN.payload);
+
 			Packet packetSYN = make_packet();
 			packetSYN.header.sequenceNumber = initialSequenceNumber;
 			packetSYN.header.acknowledgmentNumber = clientISN + 1;
@@ -357,19 +388,19 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			char bufferClientRawPacketACK[HEADER_SIZE];
 			do
 			{
-				if (sendto(server_socket, serializedPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, client_addr_len) < 0)
+				if (sendto(worker_socket, serializedPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, client_addr_len) < 0)
 				{
 					perror("send SYN failed");
 					continue;
 				};
 				log_packet(packetSYN, serverConfig.logfilePath, Send);
 				struct timeval timeout = {TIMEOUT_SEC, TIMEOUT_USEC};
-				if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+				if (setsockopt(worker_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
 				{
 					perror("setsockopt failed");
 					continue;
 				}
-				if (recvfrom(server_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
+				if (recvfrom(worker_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
 				{
 					perror("timeout or recv failed, retransmit?");
 					continue;
@@ -397,10 +428,10 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 				// exit(EXIT_FAILURE);
 				continue;
 			}
-			ConnectionData connectionData = {server_addr, &client_addr, &clientISN, &initialSequenceNumber};
+			ConnectionData connectionData = {&worker_addr, &client_addr, &clientISN, &initialSequenceNumber};
 
 			printf("child: %d", pId);
-			callback(server_socket, serverConfig, connectionData);
+			callback(worker_socket, serverConfig, connectionData);
 			break;
 		}
 		printf("parent: %d", pId);
