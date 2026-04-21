@@ -67,7 +67,7 @@ struct Led
     uint8_t running_priority; /* valid only when child > 0 */
 #ifndef LED_STUB
     struct gpiod_chip *chip;
-    struct gpiod_line *line;
+    struct gpiod_line_request *line_request;
 #endif
 };
 
@@ -113,32 +113,35 @@ static int gpio_open_(Led *led)
                 strerror(errno));
         return -1;
     }
-    led->line = gpiod_chip_get_line(led->chip, led->bcm_pin);
-    if (!led->line)
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    if (!req_cfg)
     {
-        fprintf(stderr, "led: gpiod_chip_get_line(%d) failed: %s\n",
-                led->bcm_pin, strerror(errno));
+        fprintf(stderr, "led: gpiod_request_config_new() failed\n");
         gpiod_chip_close(led->chip);
         led->chip = NULL;
         return -1;
     }
-    if (gpiod_line_request_output(led->line, "lightserver-led", 0) < 0)
+    gpiod_request_config_set_consumer(req_cfg, "lightserver-led");
+    gpiod_request_config_add_line_by_offset(req_cfg, led->bcm_pin);
+    gpiod_request_config_set_output_value(req_cfg, led->bcm_pin, 0);
+    led->line_request = gpiod_chip_request_lines(led->chip, req_cfg);
+    gpiod_request_config_free(req_cfg);
+    if (!led->line_request)
     {
-        fprintf(stderr, "led: gpiod_line_request_output(%d) failed: %s\n",
+        fprintf(stderr, "led: gpiod_chip_request_lines(%d) failed: %s\n",
                 led->bcm_pin, strerror(errno));
         gpiod_chip_close(led->chip);
         led->chip = NULL;
-        led->line = NULL;
         return -1;
     }
     return 0;
 }
 static void gpio_close_(Led *led)
 {
-    if (led->line)
+    if (led->line_request)
     {
-        gpiod_line_release(led->line);
-        led->line = NULL;
+        gpiod_line_request_release(led->line_request);
+        led->line_request = NULL;
     }
     if (led->chip)
     {
@@ -148,8 +151,8 @@ static void gpio_close_(Led *led)
 }
 static void gpio_write_(Led *led, int val)
 {
-    if (led->line)
-        gpiod_line_set_value(led->line, val ? 1 : 0);
+    if (led->line_request)
+        gpiod_line_request_set_value(led->line_request, led->bcm_pin, val ? 1 : 0);
 }
 #endif
 
