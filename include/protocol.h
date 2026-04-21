@@ -1,34 +1,3 @@
-/*
- * protocol.h
- * CSC4200 — Program 2: TCP-Like Reliable Protocol over UDP
- *
- * This header defines the packet structure and constants for the
- * custom reliability protocol you will implement.
- *
- * DO NOT change field names, sizes, or the HEADER_SIZE constant.
- * Your serialization and deserialization must match this layout exactly.
- *
- * Packet Wire Format (all fields big-endian / network byte order):
- *
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                     Sequence Number  (32 bits)                |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                  Acknowledgment Number (32 bits)              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                   Not Used (29 bits)                    |A|S|F|
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Payload Length (32 bits)                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Payload (variable)                         |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *
- * Flag bits (low 3 bits of the flags field):
- *   Bit 0 (F) — FIN  : No more data from sender; initiate teardown
- *   Bit 1 (S) — SYN  : Synchronize sequence numbers (handshake)
- *   Bit 2 (A) — ACK  : Acknowledgment Number field is valid
- */
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
 
@@ -38,6 +7,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -52,22 +22,35 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #endif
-typedef enum PacketType
-{
-	Send = 0,
-	Receive = 1,
-} PacketType;
+
+/* * The PacketHeader must contain all fields used by the logic in protocol.c.
+ * Note: These are internal struct fields; the serialization logic in 
+ * protocol.c handles the bit-packing for the wire format.
+ */
 typedef struct PacketHeader
 {
-	uint32_t sequenceNumber : 32;
-	uint32_t acknowledgmentNumber : 32;
-	uint32_t unused : 29;
-	uint8_t acknowledgmentValid : 1;
-	uint8_t synchronizeSequence : 1;
-	uint8_t noMoreData : 1;
-	uint32_t payloadLength : 32;
+    uint32_t sequenceNumber;
+    uint32_t acknowledgmentNumber;
+    uint32_t unused;              /* 29 bits in wire format */
+    uint8_t  acknowledgmentValid; /* Bit 2: ACK */
+    uint8_t  synchronizeSequence; /* Bit 1: SYN */
+    uint8_t  noMoreData;          /* Bit 0: FIN */
+    uint32_t payloadLength;       /* Serialized as the 4th 32-bit word */
 } PacketHeader;
-#define HEADER_SIZE 4 * sizeof(uint32_t)
+
+/* * The Packet struct contains the header and the actual data buffer.
+ */
+typedef struct Packet
+{
+    PacketHeader header;
+    char *payload;
+} Packet;
+
+/* * Constants 
+ * HEADER_SIZE is 16 bytes (4 slots * 4 bytes): Seq, Ack, Flags, Len 
+ */
+#define HEADER_SIZE (4 * sizeof(uint32_t))
+#define MAX_PAYLOAD 1024
 #define TIMEOUT_SEC 10L
 #define TIMEOUT_USEC 0L
 
@@ -75,44 +58,52 @@ typedef struct PacketHeader
 #define REMOTE_SERVER_PORT 5000
 #define BACKLOG_SIZE 5
 #define MAX_RETRIES 5
-#define MAX_PAYLOAD 1024 - HEADER_SIZE
-typedef struct Packet
-{
-	PacketHeader header;
-	char *payload;
-} Packet;
 
-Packet make_packet();
+typedef enum PacketType
+{
+    Send = 0,
+    Receive = 1,
+} PacketType;
+
+/* Function Prototypes */
+Packet make_packet(void);
 char *packet_serialize(Packet packet);
-Packet packet_deserialize(char *serializedPacket);
+Packet packet_deserialize(char *buf);
 
 void printPacket(Packet packet);
 void log_packet(Packet packet, char *filePath, PacketType packetType);
-char *time_stamp();
+char *time_stamp(void);
+
 typedef struct ClientConfig
 {
-	char *serverIp;
-	uint16_t port;
-	char *logfilePath;
-	char *filePath;
+    char *serverIp;
+    uint16_t port;
+    char *logfilePath;
+    char *filePath;
 } ClientConfig;
+
 ClientConfig parseClientArgs(int argc, char *argv[]);
 bool createConnection(int socket_client, ClientConfig clientConfig, struct sockaddr_in *server_addr, uint32_t *client_ISN);
+
 typedef struct ServerConfig
 {
-	uint16_t port;
-	char *logfilePath;
-	bool drop;
+    uint16_t port;
+    char *logfilePath;
+    bool drop;
 } ServerConfig;
+
 ServerConfig parseServerArgs(int argc, char *argv[]);
+
 typedef struct ConnectionData
 {
-	struct sockaddr_in *server_addr;
-	struct sockaddr_in *client_addr;
-	uint32_t *client_isn;
-	uint32_t *server_isn;
+    struct sockaddr_in *server_addr;
+    struct sockaddr_in *client_addr;
+    uint32_t *client_isn;
+    uint32_t *server_isn;
 } ConnectionData;
+
 typedef void OnConnectionCallback(int server_socket, ServerConfig serverConfig, ConnectionData connectionData);
 bool startListening(int server_socket, ServerConfig serverConfig, struct sockaddr_in *server_addr, OnConnectionCallback callback);
 void hash_file(const char *path);
+
 #endif // PROTOCOL_H_

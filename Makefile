@@ -1,6 +1,6 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -g -Iinclude
-LDFLAGS = -lcrypto
+LDFLAGS = -lcrypto -lwiringPi -lssl
 SAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer
 
 # Override these when invoking make, e.g.:
