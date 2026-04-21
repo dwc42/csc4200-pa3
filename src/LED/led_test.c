@@ -51,8 +51,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	while (led_busy(led))
-		usleep(10000);
+	// while (led_busy(led))
+	// 	usleep(10000);
 
 	led_destroy(led);
 	return 0;
