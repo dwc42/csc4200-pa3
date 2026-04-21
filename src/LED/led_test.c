@@ -7,7 +7,7 @@ int main()
 	if (!led)
 		return 1;
 
-	if (led_blink(led, 10, 1000, 1000, 0) < 0)
+	if (led_blink(led, 10, 100, 400, 0) < 0)
 	{
 		led_destroy(led);
 		return 1;
