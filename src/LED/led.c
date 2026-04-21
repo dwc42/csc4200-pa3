@@ -106,35 +106,70 @@ static void gpio_write_(Led *led, int val)
 #else
 static int gpio_open_(Led *led)
 {
-    led->chip = gpiod_chip_open_by_name("gpiochip0");
+    struct gpiod_request_config *req_cfg = NULL;
+    struct gpiod_line_settings *line_settings = NULL;
+    struct gpiod_line_config *line_cfg = NULL;
+    unsigned int offset;
+
+    led->chip = gpiod_chip_open("/dev/gpiochip0");
     if (!led->chip)
     {
-        fprintf(stderr, "led: gpiod_chip_open_by_name(gpiochip0) failed: %s\n",
+        fprintf(stderr, "led: gpiod_chip_open(/dev/gpiochip0) failed: %s\n",
                 strerror(errno));
         return -1;
     }
-    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
-    if (!req_cfg)
+
+    req_cfg = gpiod_request_config_new();
+    line_settings = gpiod_line_settings_new();
+    line_cfg = gpiod_line_config_new();
+    if (!req_cfg || !line_settings || !line_cfg)
     {
-        fprintf(stderr, "led: gpiod_request_config_new() failed\n");
-        gpiod_chip_close(led->chip);
-        led->chip = NULL;
-        return -1;
+        fprintf(stderr, "led: failed to allocate gpiod config objects\n");
+        goto fail;
     }
+
     gpiod_request_config_set_consumer(req_cfg, "lightserver-led");
-    gpiod_request_config_add_line_by_offset(req_cfg, led->bcm_pin);
-    gpiod_request_config_set_output_value(req_cfg, led->bcm_pin, 0);
-    led->line_request = gpiod_chip_request_lines(led->chip, req_cfg);
-    gpiod_request_config_free(req_cfg);
+    if (gpiod_line_settings_set_direction(line_settings, GPIOD_LINE_DIRECTION_OUTPUT) < 0)
+    {
+        fprintf(stderr, "led: gpiod_line_settings_set_direction failed: %s\n",
+                strerror(errno));
+        goto fail;
+    }
+    if (gpiod_line_settings_set_output_value(line_settings, GPIOD_LINE_VALUE_INACTIVE) < 0)
+    {
+        fprintf(stderr, "led: gpiod_line_settings_set_output_value failed: %s\n",
+                strerror(errno));
+        goto fail;
+    }
+
+    offset = (unsigned int)led->bcm_pin;
+    if (gpiod_line_config_add_line_settings(line_cfg, &offset, 1, line_settings) < 0)
+    {
+        fprintf(stderr, "led: gpiod_line_config_add_line_settings(%u) failed: %s\n",
+                offset, strerror(errno));
+        goto fail;
+    }
+
+    led->line_request = gpiod_chip_request_lines(led->chip, req_cfg, line_cfg);
     if (!led->line_request)
     {
-        fprintf(stderr, "led: gpiod_chip_request_lines(%d) failed: %s\n",
-                led->bcm_pin, strerror(errno));
-        gpiod_chip_close(led->chip);
-        led->chip = NULL;
-        return -1;
+        fprintf(stderr, "led: gpiod_chip_request_lines(%u) failed: %s\n",
+                offset, strerror(errno));
+        goto fail;
     }
+
+    gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(line_settings);
+    gpiod_request_config_free(req_cfg);
     return 0;
+
+fail:
+    gpiod_line_config_free(line_cfg);
+    gpiod_line_settings_free(line_settings);
+    gpiod_request_config_free(req_cfg);
+    gpiod_chip_close(led->chip);
+    led->chip = NULL;
+    return -1;
 }
 static void gpio_close_(Led *led)
 {
@@ -152,7 +187,10 @@ static void gpio_close_(Led *led)
 static void gpio_write_(Led *led, int val)
 {
     if (led->line_request)
-        gpiod_line_request_set_value(led->line_request, led->bcm_pin, val ? 1 : 0);
+        gpiod_line_request_set_value(led->line_request,
+                                     (unsigned int)led->bcm_pin,
+                                     val ? GPIOD_LINE_VALUE_ACTIVE
+                                         : GPIOD_LINE_VALUE_INACTIVE);
 }
 #endif
 
