@@ -44,16 +44,18 @@ int main(int argc, char *argv[])
 	Led *led = led_create(17);
 	if (!led)
 		return 1;
-
-	if (led_blink(led, (uint16_t)blinkCount, (uint16_t)onMs, (uint16_t)offMs, 0) < 0)
+	int pid = fork();
+	if (!pid)
 	{
+		if (led_blink(led, (uint16_t)blinkCount, (uint16_t)onMs, (uint16_t)offMs, 0) < 0)
+		{
+			led_destroy(led);
+			return 1;
+		}
+		while (led_busy(led))
+			usleep(10000);
+
 		led_destroy(led);
-		return 1;
 	}
-
-	// while (led_busy(led))
-	// 	usleep(10000);
-
-	led_destroy(led);
 	return 0;
 }
