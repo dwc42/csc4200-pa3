@@ -1,4 +1,4 @@
-#include <motion.h>
+#include "motion.h"
 
 void motionDetectEventCallback()
 {

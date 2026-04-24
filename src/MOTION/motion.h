@@ -48,4 +48,4 @@ extern "C"
 }
 #endif
 
-#endif /* LED_H_ */
+#endif /* MOTION_H_ */
