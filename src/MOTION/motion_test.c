@@ -7,5 +7,6 @@ void motionDetectEventCallback()
 int main()
 {
 	setupGPIO();
+	setPin(27);
 	subscribeMotionDetectEvent(motionDetectEventCallback);
 }
