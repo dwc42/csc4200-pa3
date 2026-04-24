@@ -9,4 +9,7 @@ int main()
 	setupGPIO();
 	setPin(27);
 	subscribeMotionDetectEvent(motionDetectEventCallback);
+	while (1)
+	{
+	}
 }
