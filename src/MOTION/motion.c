@@ -1,4 +1,7 @@
 #include "motion.h"
+bool enableMotionDetectedInterrupt();
+bool disableMotionDetectedInterrupt();
+
 void (*motionEventCallbacks[MAX_MOTION_EVENT_CALLBACKS])(void);
 uint16_t motionEventCallbacksLength = 0;
 

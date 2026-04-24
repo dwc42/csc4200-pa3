@@ -2,11 +2,12 @@ CC      = gcc
 CFLAGS  = -Wall -Wextra -g -I../../include
 LDFLAGS = 
 STUB    ?= 0
+WIRINGPI_LIBS ?= -lwiringPi
 
 ifeq ($(STUB),1)
 	CFLAGS += -DLED_STUB
 else
-	LDFLAGS += -lgpiod
+	LDFLAGS += $(WIRINGPI_LIBS)
 endif
 
 SOURCES = motion_test.c motion.c
