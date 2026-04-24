@@ -2,7 +2,7 @@
 
 void motionDetectEventCallback()
 {
-	printf("Motion Detected");
+	printf("Motion Detected\n");
 }
 int main()
 {
