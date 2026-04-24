@@ -33,15 +33,9 @@ bool setPin(uint8_t pin)
 bool enableMotionDetectedInterrupt()
 {
 	if (motionEnabled)
-		return;
-	if (pinMode(currentPin, INPUT) < 1)
-	{
 		return false;
-	}
-	if (pullUpDnControl(currentPin, PUD_UP) < 1)
-	{
-		return false;
-	} // Enable internal pull-up
+	pinMode(currentPin, INPUT);
+	pullUpDnControl(currentPin, PUD_UP); // Enable internal pull-up
 
 	// Register ISR for falling edge on GPIO 16
 	if (wiringPiISR(currentPin, INT_EDGE_FALLING, &onMotionDetectedInternal) < 1)
@@ -54,11 +48,8 @@ bool enableMotionDetectedInterrupt()
 bool disableMotionDetectedInterrupt()
 {
 	if (!motionEnabled)
-		return;
-	if (pinMode(currentPin, INPUT) < 1)
-	{
-		return false;
-	}
+		return true;
+	wiringPiISRStop(currentPin);
 	motionEnabled = false;
 	return true;
 }
