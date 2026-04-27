@@ -1,266 +1,146 @@
 #include "../include/protocol.h"
-int client(ClientConfig clientConfig);
-/**
- * 1. Create a UDP socket with `socket(AF_INET, SOCK_DGRAM, 0)`.
-2. Set `SO_RCVTIMEO` to `{TIMEOUT_SEC, TIMEOUT_USEC}`.
-3. Generate a random ISN: seed with `srand((unsigned)time(NULL) ^ getpid())`, then call `rand()`.
-4. Send a SYN packet (flags = `FLAG_SYN`, seq = ISN, ack = 0).
-5. Wait for SYN|ACK. Validate: `FLAG_SYN | FLAG_ACK` both set, `ack_num == client_isn + 1`.
-6. If timeout or invalid, retransmit SYN (up to `MAX_RETRIES`).
-7. Send ACK (flags = `FLAG_ACK`, seq = client_isn + 1, ack = server_isn + 1).
-8. Print "Handshake complete."
- */
+#include <wiringPi.h>
 
-int main(int argc, char *argv[])
-{
-	int pid = fork();
-	if (!pid)
-	{
-		ClientConfig clientConfig = parseClientArgs(argc, argv);
-		printf("child: %d\n", pid);
-		client(clientConfig);
-	}
-	else
-	{
+// GPIO Configuration
+#define PIR_PIN 7
+#define BLINK_DURATION_MS 500
+#define BLINK_COUNT 5
 
-		ClientConfig clientConfig = parseClientArgs(argc, argv);
-		printf("parent: %d\n", pid);
-		clientConfig.filePath = "test1.txt";
-		client(clientConfig);
-		wait(NULL);
-	}
-	exit(EXIT_SUCCESS);
+// Global state for the motion callback
+static int client_socket;
+static struct sockaddr_in server_addr;
+static ClientConfig cfg;
+static uint32_t client_seq;
+static uint32_t server_ack_val; // The next seq we expect from server
+static int motion_detected_count = 0;
+static bool is_sending = false; // Lock variable
+
+
+// motionDetectionCallback
+void motionDetectionCallback(void) {
+    // Check lock var if currently sending
+    if (is_sending) return;
+    
+    // If not set lock var
+    is_sending = true;
+
+    uint32_t retries = 0;
+    bool acknowledged = false;
+    socklen_t addr_len = sizeof(struct sockaddr_in);
+
+    printf("[client] Motion detected! (%d/10)\n", motion_detected_count + 1);
+
+    // do { motionDetected Packet; Receive ack } while (< max retries)
+    do {
+        Packet pkt = make_packet();
+        pkt.header.sequenceNumber = client_seq;
+        pkt.header.acknowledgmentNumber = server_ack_val;
+        pkt.header.acknowledgmentValid = 1;
+        pkt.header.payloadLength = 15; // strlen(":MotionDetected")
+        pkt.payload = ":MotionDetected";
+
+        char *raw = packet_serialize(pkt);
+        sendto(client_socket, raw, HEADER_SIZE + pkt.header.payloadLength, 0,
+               (struct sockaddr *)&server_addr, addr_len);
+        log_packet(pkt, cfg.logfilePath, Send);
+        free(raw);
+
+        char recvBuf[HEADER_SIZE + MAX_PAYLOAD];
+        if (recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL) > 0) {
+            Packet ackPkt = packet_deserialize(recvBuf);
+            log_packet(ackPkt, cfg.logfilePath, Receive);
+            
+            if (ackPkt.header.acknowledgmentValid && 
+                ackPkt.header.acknowledgmentNumber == (client_seq + pkt.header.payloadLength)) {
+                
+                client_seq += pkt.header.payloadLength;
+                server_ack_val = ackPkt.header.sequenceNumber;
+                acknowledged = true;
+            }
+            free(ackPkt.payload);
+        }
+    } while (!acknowledged && ++retries < MAX_RETRIES);
+
+    // If i++ >= 10 send fin packet
+    motion_detected_count++;
+    if (motion_detected_count >= 10) {
+        printf("[client] 10 detections reached. Sending FIN...\n");
+        
+        Packet finPkt = make_packet();
+        finPkt.header.sequenceNumber = client_seq;
+        finPkt.header.noMoreData = 1;
+        
+        char *finRaw = packet_serialize(finPkt);
+        sendto(client_socket, finRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, addr_len);
+        log_packet(finPkt, cfg.logfilePath, Send);
+        free(finRaw);
+
+        printf("[client] Interaction complete. Exiting.\n");
+        close(client_socket);
+        exit(EXIT_SUCCESS);
+    }
+
+    is_sending = false; // Release lock
 }
-int client(ClientConfig clientConfig)
-{
 
-	if (clientConfig.logfilePath == NULL)
-	{
-		printf("clientConfig.logfilePath == NULL");
-		return EXIT_FAILURE;
-	}
-	// else if (clientConfig.port < 1024)
-	// {
-	// 	printf("clientConfig.port < 1024");
-	// 	return EXIT_FAILURE;
-	// }
-	else if (clientConfig.serverIp == NULL)
-	{
-		printf("clientConfig.serverIp == NULL");
-		return EXIT_FAILURE;
-	}
-	else if (clientConfig.filePath == NULL)
-	{
-		printf("clientConfig.filePath == NULL");
-		return EXIT_FAILURE;
-	}
 
-	struct sockaddr_in server_addr;
-	uint32_t client_ISN;
-	// struct sockaddr_in local_addr;
 
-	int socket_client = socket(AF_INET, SOCK_DGRAM, 0);
-	if (socket_client < 0)
-	{
-		perror("socket creation failed");
-		return EXIT_FAILURE;
-	}
-	if (!createConnection(socket_client, clientConfig, &server_addr, &client_ISN))
-	{
-		// connection is already closed by this point;
-		printf("Handshake failed.\n");
-		return EXIT_FAILURE;
-	};
-	printf("Handshake complete.\n");
-	// printf("test\n");
-	struct timeval timeout = {TIMEOUT_SEC, TIMEOUT_USEC};
-	if (setsockopt(socket_client, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
-	{
-		perror("setsockopt failed");
-		return false;
-	}
+int main(int argc, char *argv[]) {
+    cfg = parseClientArgs(argc, argv);
+    if (!cfg.serverIp || cfg.port == 0) {
+        fprintf(stderr, "Usage: lightclient -s <IP> -p <PORT> -l <LOG>\n");
+        exit(EXIT_FAILURE);
+    }
 
-	socklen_t server_addr_len = sizeof(struct sockaddr_in);
-	FILE *filePtr = fopen(clientConfig.filePath, "rb");
+    if (wiringPiSetup() == -1) exit(EXIT_FAILURE);
+    pinMode(PIR_PIN, INPUT);
 
-	if (filePtr == NULL)
-	{
-		printf("file not found\n");
-		close(socket_client);
-		return EXIT_FAILURE;
-	}
-	printf("file found at: %s\n", clientConfig.filePath);
-	hash_file(clientConfig.filePath);
-	char *filePathToSend;
-	const char *fileNameTag = "FILENAME:";
-	const uint32_t fileNameTagLength = strlen(fileNameTag);
-	const uint32_t filePathToSendLength = strlen(clientConfig.filePath) + fileNameTagLength + 1;
+    client_socket = socket(AF_INET, SOCK_DGRAM, 0);
+    
+    // createConnection() (handles handshake in protocol.c)
+    uint32_t isn;
+    if (!createConnection(client_socket, cfg, &server_addr, &isn)) {
+        exit(EXIT_FAILURE);
+    }
+    client_seq = isn + 1; // Start seq after handshake
 
-	filePathToSend = malloc(filePathToSendLength);
-	memcpy(filePathToSend, fileNameTag, fileNameTagLength);
-	memcpy(filePathToSend + fileNameTagLength, clientConfig.filePath, strlen(clientConfig.filePath));
-	filePathToSend[filePathToSendLength - 1] = '\0';
-	const uint32_t newMaxPayloadSize = MAX_PAYLOAD - filePathToSendLength;
-	char payloadBuffer[MAX_PAYLOAD];
-	memcpy(payloadBuffer, filePathToSend, filePathToSendLength);
-	int ch;
-	uint32_t retries = 0;
-	uint32_t totalFileByteCount = 0;
-	uint32_t currentPayloadChunkSize = filePathToSendLength;
-	uint32_t currentSequenceNumber = client_ISN + 1;
-	while ((ch = fgetc(filePtr)) != EOF)
-	{
-		payloadBuffer[currentPayloadChunkSize] = (char)ch;
-		currentPayloadChunkSize++;
-		totalFileByteCount++;
-		if (currentPayloadChunkSize >= newMaxPayloadSize)
-		{
-			Packet packet = make_packet();
-			packet.header.sequenceNumber = currentSequenceNumber;
-			packet.header.acknowledgmentNumber = client_ISN + currentPayloadChunkSize;
-			packet.header.payloadLength = currentPayloadChunkSize;
-			packet.payload = malloc(currentPayloadChunkSize + 1);
-			packet.payload[currentPayloadChunkSize] = '\0';
-			memcpy(packet.payload, payloadBuffer, currentPayloadChunkSize);
-			char *serializedPacket = packet_serialize(packet);
-			do
-			{
-				if (sendto(socket_client, serializedPacket, HEADER_SIZE + currentPayloadChunkSize, 0, (struct sockaddr *)&server_addr, server_addr_len) < 0)
-				{
-					close(socket_client);
-					perror("send packet failed");
-					return EXIT_FAILURE;
-				}
-				log_packet(packet, clientConfig.logfilePath, Send);
-				char acknowledgementPacketRaw[HEADER_SIZE];
-				if (recvfrom(socket_client, acknowledgementPacketRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, &server_addr_len) < 0)
-				{
-					perror("recvfrom packet failed or timed out");
-					continue;
-				}
-				Packet acknowledgementPacket = packet_deserialize(acknowledgementPacketRaw);
-				log_packet(acknowledgementPacket, clientConfig.logfilePath, Receive);
-				if (acknowledgementPacket.header.acknowledgmentNumber != currentSequenceNumber + currentPayloadChunkSize)
-				{
-					free(acknowledgementPacket.payload);
-					printf("acknowledgementPacket.header.acknowledgmentNumber != currentSequenceNumber + currentPayloadChunkSize\n");
-					continue;
-				}
-				free(acknowledgementPacket.payload);
-				break;
+    // send initial blink params
+    uint16_t params[2] = { htons(BLINK_DURATION_MS), htons(BLINK_COUNT) };
+    uint32_t retries = 0;
+    bool param_ack = false;
+    
+    do {
+        Packet p = make_packet();
+        p.header.sequenceNumber = client_seq;
+        p.header.acknowledgmentValid = 1;
+        p.header.payloadLength = 4;
+        p.payload = (char*)params;
 
-			} while (++retries < MAX_RETRIES);
-			free(serializedPacket);
-			free(packet.payload);
-			if (retries >= MAX_RETRIES)
-			{
-				printf("failed to send file");
-				break;
-			}
+        char *raw = packet_serialize(p);
+        sendto(client_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        log_packet(p, cfg.logfilePath, Send);
+        free(raw);
 
-			currentSequenceNumber += currentPayloadChunkSize;
-			memcpy(payloadBuffer, filePathToSend, filePathToSendLength);
-			currentPayloadChunkSize = filePathToSendLength;
-			retries = 0;
-		}
-	}
-	if (currentPayloadChunkSize > filePathToSendLength)
-	{
-		retries = 0;
-		Packet packet = make_packet();
-		packet.header.sequenceNumber = currentSequenceNumber;
-		packet.header.acknowledgmentNumber = client_ISN + currentPayloadChunkSize;
-		packet.header.payloadLength = currentPayloadChunkSize;
-		packet.payload = malloc(currentPayloadChunkSize + 1);
-		packet.payload[currentPayloadChunkSize] = '\0';
-		memcpy(packet.payload, payloadBuffer, currentPayloadChunkSize);
-		char *serializedPacket = packet_serialize(packet);
-		do
-		{
-			if (sendto(socket_client, serializedPacket, HEADER_SIZE + currentPayloadChunkSize, 0, (struct sockaddr *)&server_addr, server_addr_len) < 0)
-			{
-				close(socket_client);
-				perror("send packet failed");
-				return EXIT_FAILURE;
-			}
-			log_packet(packet, clientConfig.logfilePath, Send);
-			char acknowledgementPacketRaw[HEADER_SIZE];
-			if (recvfrom(socket_client, acknowledgementPacketRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, &server_addr_len) < 0)
-			{
-				perror("recvfrom packet failed or timed out");
-				continue;
-			}
-			Packet acknowledgementPacket = packet_deserialize(acknowledgementPacketRaw);
-			log_packet(acknowledgementPacket, clientConfig.logfilePath, Receive);
-			if (acknowledgementPacket.header.acknowledgmentNumber != currentSequenceNumber + currentPayloadChunkSize)
-			{
-				free(acknowledgementPacket.payload);
-				printf("acknowledgementPacket.header.acknowledgmentNumber != currentSequenceNumber + currentPayloadChunkSize\n");
-				continue;
-			}
-			free(acknowledgementPacket.payload);
-			break;
+        char buf[256];
+        if (recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL) > 0) {
+            Packet ack = packet_deserialize(buf);
+            log_packet(ack, cfg.logfilePath, Receive);
+            param_ack = true;
+            client_seq += 4;
+            server_ack_val = ack.header.sequenceNumber;
+            free(ack.payload);
+        }
+    } while (!param_ack && ++retries < MAX_RETRIES);
 
-		} while (++retries < MAX_RETRIES);
-		free(serializedPacket);
-		free(packet.payload);
-		if (retries >= MAX_RETRIES)
-		{
-			free(filePathToSend);
-			close(socket_client);
-			printf("failed to send file\n");
-			return EXIT_FAILURE;
-		}
-		else
-		{
+    printf("[client] Parameters set. Monitoring PIR sensor...\n");
 
-			currentSequenceNumber += currentPayloadChunkSize;
-			currentPayloadChunkSize = filePathToSendLength;
-		}
-	}
-	Packet finishedPacket = make_packet();
-	finishedPacket.header.sequenceNumber = currentSequenceNumber;
-	finishedPacket.header.noMoreData = 1;
-	char *finishedPacketRaw = packet_serialize(finishedPacket);
-	Packet finishedACKPacket;
-	retries = 0;
-	do
-	{
-		if (sendto(socket_client, finishedPacketRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, server_addr_len) < 0)
-		{
-			printf("sendto finishedPacketRaw failed\n");
-			continue;
-		}
-		log_packet(finishedPacket, clientConfig.logfilePath, Send);
-		char finishedACKPacketRaw[HEADER_SIZE];
-		if (recvfrom(socket_client, finishedACKPacketRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, &server_addr_len) < 0)
-		{
-			printf("recvfrom finishedACKPacketRaw failed\n");
-			continue;
-		}
+    // subscribeMotionDetectEvent() using WiringPi Interrupt
+    // (PIR_PIN, INT_EDGE_RISING, callback)
+    if (wiringPiISR(PIR_PIN, INT_EDGE_RISING, &motionDetectionCallback) < 0) {
+        perror("ISR setup failed");
+        exit(EXIT_FAILURE);
+    }
 
-		finishedACKPacket = packet_deserialize(finishedACKPacketRaw);
-		log_packet(finishedACKPacket, clientConfig.logfilePath, Receive);
-		if (!finishedACKPacket.header.acknowledgmentValid || !finishedACKPacket.header.noMoreData)
-		{
-			free(finishedACKPacket.payload);
-			printf("finishedACKPacket: acknowledgmentValid and noMoreData flags both not 1\n");
-			continue;
-		}
-		free(finishedACKPacket.payload);
-		break;
-	} while (++retries < MAX_RETRIES);
-	if (retries >= MAX_RETRIES)
-	{
-		free(finishedPacketRaw);
-		free(filePathToSend);
-		close(socket_client);
-		printf("failed to send file\n");
-		return EXIT_FAILURE;
-	}
-	printf("File Sent\nConnection closed cleanly.\n");
-	free(finishedPacketRaw);
-	free(filePathToSend);
-	close(socket_client);
-	return EXIT_SUCCESS;
+    while(1) { delay(1000); } // Keep main thread alive
+    return 0;
 }
