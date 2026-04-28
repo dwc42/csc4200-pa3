@@ -66,7 +66,6 @@ typedef struct PacketHeader
 	uint8_t acknowledgmentValid : 1;
 	uint8_t synchronizeSequence : 1;
 	uint8_t noMoreData : 1;
-	uint32_t payloadLength : 32;
 } PacketHeader;
 #define HEADER_SIZE 3 * sizeof(uint32_t)
 #define TIMEOUT_SEC 10L
