@@ -90,6 +90,7 @@ void motionDetectionCallback(void)
 
 int main(int argc, char *argv[])
 {
+    setupGPIO();
     cfg = parseClientArgs(argc, argv);
     if (!cfg.serverIp || cfg.port == 0)
     {
