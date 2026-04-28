@@ -150,7 +150,7 @@ int createClient(uint16_t blink_duration, uint16_t blink_count)
     client_seq = isn + 1; // Start seq after handshake
 
     // send initial blink params
-    uint16_t params[2] = {htons(BLINK_DURATION_MS), htons(BLINK_COUNT)};
+    uint16_t params[2] = {htons(blink_duration), htons(blink_count)};
     uint32_t retries = 0;
     bool param_ack = false;
 
