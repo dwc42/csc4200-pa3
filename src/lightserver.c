@@ -128,14 +128,14 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     if (!pid)
     {
-        client(200, 5);
+        client(200, 5, cfg);
     }
     else
     {
-        client(500, 3);
+        client(500, 3, cfg);
     }
 }
-int client(uint16_t blinkDur, uint16_t blinkCount)
+int client(uint16_t blinkDur, uint16_t blinkCount, ServerConfig cfg)
 {
     if (!setupGPIO())
     {
