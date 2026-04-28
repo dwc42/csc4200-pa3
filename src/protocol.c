@@ -11,19 +11,19 @@
  *
  * Packet Wire Format (all fields big-endian / network byte order):
  *
- *  0                   1                   2                   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                     Sequence Number  (32 bits)                |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                  Acknowledgment Number (32 bits)              |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                   Not Used (29 bits)                    |A|S|F|
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Payload Length (32 bits)                   |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |                    Payload (variable)                         |
- * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                     Sequence Number                           |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                     Acknowledgment Number                     |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                     Not Used                            |A|S|F|
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |                                                               |
+  |                        Payload                               |
+  |                                                               |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * Flag bits (low 3 bits of the flags field):
  *   Bit 0 (F) — FIN  : No more data from sender; initiate teardown
@@ -58,8 +58,6 @@ char *packet_serialize(Packet packet)
 	memcpy(serializedPacket + sizeof(uint32_t) * i++, &bufferNetworkInt, sizeof(uint32_t));
 	bufferNetworkInt = htonl((packet.header.unused << 3) | (packet.header.acknowledgmentValid << 2) | (packet.header.synchronizeSequence << 1) | packet.header.noMoreData);
 	memcpy(serializedPacket + sizeof(uint32_t) * i++, &bufferNetworkInt, sizeof(uint32_t));
-	bufferNetworkInt = htonl(packet.header.payloadLength);
-	memcpy(serializedPacket + sizeof(uint32_t) * i++, &bufferNetworkInt, sizeof(uint32_t));
 	// printf("finished packet_serialize of header\n");
 	memcpy(serializedPacket + HEADER_SIZE, packet.payload, packet.header.payloadLength);
 	serializedPacket[HEADER_SIZE + packet.header.payloadLength] = '\0';
@@ -82,8 +80,6 @@ Packet packet_deserialize(char *serializedPacket)
 	packet.header.acknowledgmentValid = bufferInt >> 2 & 0x1u;
 	packet.header.synchronizeSequence = bufferInt >> 1 & 0x1u;
 	packet.header.noMoreData = bufferInt & 0x1u;
-	memcpy(&bufferInt, serializedPacket + sizeof(uint32_t) * i++, sizeof(uint32_t));
-	packet.header.payloadLength = ntohl(bufferInt);
 
 	// printf("payloadLength: %d,\n", packet.header.payloadLength);
 	packet.payload = malloc(packet.header.payloadLength + 1);
@@ -101,7 +97,6 @@ void printPacket(Packet packet)
 	printf("  acknowledgmentValid: %d,\n", packet.header.acknowledgmentValid);
 	printf("  synchronizeSequence: %d,\n", packet.header.synchronizeSequence);
 	printf("  noMoreData: %d,\n", packet.header.noMoreData);
-	printf("  payloadLength: %d,\n", packet.header.payloadLength);
 	printf("  payload: %s,\n", packet.payload);
 	printf(")\n");
 }
@@ -121,10 +116,7 @@ void log_packet(Packet packet, char *filePath, PacketType packetType)
 		strcat(flagsBuffer, "ACK ");
 	if (packet.header.noMoreData)
 		strcat(flagsBuffer, "FIN ");
-	if (packet.header.payloadLength)
-		fprintf(fptr, "[%s] %s SEQ=%u ACK=%u %s LEN=%u\n", dateString, packetTypeString, packet.header.sequenceNumber, packet.header.acknowledgmentNumber, flagsBuffer, packet.header.payloadLength);
-	else
-		fprintf(fptr, "[%s] %s SEQ=%u ACK=%u %s\n", dateString, packetTypeString, packet.header.sequenceNumber, packet.header.acknowledgmentNumber, flagsBuffer);
+	fprintf(fptr, "%s %u %u %s\n", packetTypeString, packet.header.sequenceNumber, packet.header.acknowledgmentNumber, flagsBuffer);
 	free(dateString);
 	fflush(fptr);
 	fclose(fptr);
@@ -341,6 +333,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 		uint32_t clientISN;
 		// resets timeout to 0
 		struct timeval blocking_timeout = {0, 0};
+
 		if (setsockopt(server_socket, SOL_SOCKET, SO_RCVTIMEO, &blocking_timeout, sizeof(blocking_timeout)) < 0)
 		{
 			perror("setsockopt failed");
@@ -348,6 +341,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 		}
 		socklen_t client_addr_len = sizeof(struct sockaddr_in);
 		char bufferClientRawPacketSYN[HEADER_SIZE];
+
 		if (recvfrom(server_socket, bufferClientRawPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
 		{
 			perror("receive syc failed");
@@ -356,14 +350,13 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 		int pId = fork();
 		if (!pId)
 		{
-			printf("child: %d\n", pId);
+			printf("child connected: %d\n", pId);
 			int worker_socket;
 			struct sockaddr_in worker_addr;
 			uint16_t worker_port;
 			createServerWorkerSocket(&worker_socket, &worker_addr, &worker_port);
 			Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN);
 			log_packet(clientPacketSYN, serverConfig.logfilePath, Receive);
-
 			srand((unsigned)time(NULL) ^ getpid());
 			uint32_t initialSequenceNumber = rand();
 			clientISN = clientPacketSYN.header.sequenceNumber;
