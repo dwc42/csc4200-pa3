@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
         uint16_t blinkDurACK = ntohs(netDur);
         uint16_t blinkCountACK = ntohs(netCount);
-        if (blinkDurACK != params[0] || blinkCountACK != params[1])
+        if (blinkDurACK != BLINK_DURATION_MS || blinkCountACK != BLINK_COUNT)
         {
             printf("blinkDurACK != sentDur || blinkCountACK != sentCount, retransmit?\n");
             continue;
