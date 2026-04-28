@@ -199,7 +199,6 @@ bool createConnection(int socket_client, ClientConfig clientConfig, struct socka
 	packetSYN.header.sequenceNumber = initialSequenceNumber;
 	packetSYN.header.acknowledgmentNumber = 0;
 	packetSYN.header.synchronizeSequence = 1;
-	packetSYN.header.payloadLength = 0;
 	char *serializedPacketSYN = packet_serialize(packetSYN);
 
 	char bufferRawServerPacketSYN[HEADER_SIZE];
@@ -248,7 +247,6 @@ bool createConnection(int socket_client, ClientConfig clientConfig, struct socka
 	packetACK.header.sequenceNumber = initialSequenceNumber + 1;
 	packetACK.header.acknowledgmentNumber = serverPacketSYN.header.sequenceNumber + 1;
 	packetACK.header.acknowledgmentValid = 1;
-	packetACK.header.payloadLength = 0;
 	char *serializedPacketACK = packet_serialize(packetACK);
 	if (sendto(socket_client, serializedPacketACK, HEADER_SIZE, 0, (struct sockaddr *)server_addr, server_addr_len) < 0)
 	{
@@ -377,7 +375,6 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			packetSYN.header.acknowledgmentNumber = clientISN + 1;
 			packetSYN.header.synchronizeSequence = 1;
 			packetSYN.header.acknowledgmentValid = 1;
-			packetSYN.header.payloadLength = 0;
 			char *serializedPacketSYN = packet_serialize(packetSYN);
 
 			uint32_t retries = 0;
