@@ -2,16 +2,15 @@
 bool enableMotionDetectedInterrupt();
 bool disableMotionDetectedInterrupt();
 
-void (*motionEventCallbacks[MAX_MOTION_EVENT_CALLBACKS])(void);
 uint16_t motionEventCallbacksLength = 0;
-
+MotionEvent motionEvents[16];
 int8_t currentPin = -1;
 
 void onMotionDetectedInternal(void)
 {
 	for (uint16_t i = 0; i < motionEventCallbacksLength; i++)
 	{
-		motionEventCallbacks[i]();
+		motionEvents[i].motionEventCallback();
 	}
 }
 bool motionEnabled = false;
@@ -53,22 +52,23 @@ bool disableMotionDetectedInterrupt()
 	motionEnabled = false;
 	return true;
 }
-
-bool subscribeMotionDetectEvent(MotionDetectEventCallback callback)
+int16_t currentEventId = 0;
+int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback)
 {
 	if (motionEventCallbacksLength >= MAX_MOTION_EVENT_CALLBACKS)
-		return false;
-	motionEventCallbacks[motionEventCallbacksLength] = callback;
+		return -1;
+	motionEvents[motionEventCallbacksLength].motionEventCallback = callback;
+	motionEvents[motionEventCallbacksLength].eventId = currentEventId++;
 	motionEventCallbacksLength++;
 	if (!motionEnabled && !enableMotionDetectedInterrupt())
-		return false;
-	return true;
+		return -1;
+	return motionEvents[motionEventCallbacksLength].eventId;
 }
-bool unsubscribeMotionDetectEvent(MotionDetectEventCallback callback)
+bool unsubscribeMotionDetectEvent(int16_t eventId)
 {
 	if (motionEventCallbacksLength <= 0)
 		return false;
-	if (motionEventCallbacksLength == 1 && motionEventCallbacks[0] == callback)
+	if (motionEventCallbacksLength == 1 && motionEvents[0].eventId == eventId)
 	{
 
 		motionEventCallbacksLength = 0;
@@ -79,7 +79,7 @@ bool unsubscribeMotionDetectEvent(MotionDetectEventCallback callback)
 	int16_t indexFound = -1;
 	for (uint16_t i = 0; i < motionEventCallbacksLength; i++)
 	{
-		if (motionEventCallbacks[i] == callback)
+		if (motionEvents[i].eventId == eventId)
 		{
 			indexFound = i;
 			break;
@@ -89,7 +89,7 @@ bool unsubscribeMotionDetectEvent(MotionDetectEventCallback callback)
 		return false;
 	for (uint16_t i = indexFound; i < motionEventCallbacksLength - 1; i++)
 	{
-		motionEventCallbacks[i] = motionEventCallbacks[i + 1];
+		motionEvents[i] = motionEvents[i + 1];
 	}
 	--motionEventCallbacksLength;
 	return true;
