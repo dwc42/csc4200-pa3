@@ -4,11 +4,12 @@ LDFLAGS = -lcrypto
 SAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer
 STUB ?= 0
 LED_LIBS ?= -lgpiod
+WIRINGPI_LIBS ?= -lwiringPi
 
 ifeq ($(STUB),1)
 	CFLAGS += -DLED_STUB
 else
-	LDFLAGS += $(LED_LIBS)
+	LDFLAGS += $(LED_LIBS) $(WIRINGPI_LIBS)
 endif
 
 # Override these when invoking make, e.g.:
@@ -39,16 +40,19 @@ $(OBJ_DIR)/protocol.o: $(SRC)/protocol.c include/protocol.h | $(OBJ_DIR)
 $(OBJ_DIR)/led.o: $(SRC)/LED/led.c $(SRC)/LED/led.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lightserver: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o
+$(OBJ_DIR)/motion.o: $(SRC)/MOTION/motion.c $(SRC)/MOTION/motion.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+lightserver: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o $(OBJ_DIR)/motion.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-lightclient: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o
+lightclient: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/motion.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-lightserver-asan: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o
+lightserver-asan: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o $(OBJ_DIR)/motion.o
 	$(CC) $(CFLAGS) $(SAN_FLAGS) $^ -o $@ $(LDFLAGS) $(SAN_FLAGS)
 
-lightclient-asan: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o
+lightclient-asan: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/motion.o
 	$(CC) $(CFLAGS) $(SAN_FLAGS) $^ -o $@ $(LDFLAGS) $(SAN_FLAGS)
 
 leak-lightserver: lightserver-asan
