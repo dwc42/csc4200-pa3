@@ -361,7 +361,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			srand((unsigned)time(NULL) ^ getpid());
 			uint32_t initialSequenceNumber = rand();
 			clientISN = clientPacketSYN.header.sequenceNumber;
-			printf("Client ISN: %u, Server ISN: %u\n", clientISN, initialSequenceNumber);
+			printf("Client ISN: %u, Server ISN: %u, %u\n", clientISN, initialSequenceNumber, bytesCLientSYN);
 			if (!clientPacketSYN.header.synchronizeSequence)
 			{
 				perror("packet.header.synchronizeSequence not 1");
