@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    if (!setupGPIO)
+    if (!setupGPIO())
         exit(EXIT_FAILURE);
 
     int server_socket = socket(AF_INET, SOCK_DGRAM, 0);

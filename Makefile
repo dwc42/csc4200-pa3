@@ -2,6 +2,14 @@ CC      = gcc
 CFLAGS  = -Wall -Wextra -g -Iinclude
 LDFLAGS = -lcrypto
 SAN_FLAGS = -fsanitize=address -fno-omit-frame-pointer
+STUB ?= 0
+LED_LIBS ?= -lgpiod
+
+ifeq ($(STUB),1)
+	CFLAGS += -DLED_STUB
+else
+	LDFLAGS += $(LED_LIBS)
+endif
 
 # Override these when invoking make, e.g.:
 # make leak-lightserver SERVER_ARGS="-p 5000 -l lightserver.log"
@@ -28,13 +36,16 @@ $(OBJ_DIR):
 $(OBJ_DIR)/protocol.o: $(SRC)/protocol.c include/protocol.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-lightserver: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o
+$(OBJ_DIR)/led.o: $(SRC)/LED/led.c $(SRC)/LED/led.h | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+lightserver: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 lightclient: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-lightserver-asan: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o
+lightserver-asan: $(SRC)/lightserver.c $(OBJ_DIR)/protocol.o $(OBJ_DIR)/led.o
 	$(CC) $(CFLAGS) $(SAN_FLAGS) $^ -o $@ $(LDFLAGS) $(SAN_FLAGS)
 
 lightclient-asan: $(SRC)/lightclient.c $(OBJ_DIR)/protocol.o
