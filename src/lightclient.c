@@ -1,9 +1,10 @@
 #include "../include/protocol.h"
 
 // GPIO Configuration
-#define PIR_PIN 7
+#define PIR_PIN 27
 #define BLINK_DURATION_MS 500
 #define BLINK_COUNT 5
+#define MAX_MOTION_COUNT 10
 #define MAX_MOTION_COUNT 10
 // Global state for the motion callback
 static int client_socket;
@@ -91,8 +92,7 @@ void motionDetectionCallback(void)
 
 int main(int argc, char *argv[])
 {
-    breakKeepAliveLoop = false;
-    setupGPIO();
+
     cfg = parseClientArgs(argc, argv);
     if (!cfg.serverIp || cfg.port == 0)
     {
@@ -100,6 +100,9 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    breakKeepAliveLoop = false;
+    setupGPIO();
+    setPin(PIR_PIN);
     // if (wiringPiSetup() == -1)
     //     exit(EXIT_FAILURE);
     // pinMode(PIR_PIN, INPUT);
