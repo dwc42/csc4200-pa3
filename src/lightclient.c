@@ -140,13 +140,24 @@ int main(int argc, char *argv[])
         ssize_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
         if (bytesBlinkACK <= 0)
         {
-            printf("bytesBlinkACK < 0\n");
+            printf("bytesBlinkACK < 0, retransmit?\n");
             continue;
         }
 
         Packet ack = packet_deserialize(buf, bytesBlinkACK);
         log_packet(ack, cfg.logfilePath, Receive);
 
+        uint16_t netDur, netCount;
+        memcpy(&netDur, ack.payload, 2);
+        memcpy(&netCount, ack.payload + 2, 2);
+
+        uint16_t blinkDurACK = ntohs(netDur);
+        uint16_t blinkCountACK = ntohs(netCount);
+        if (blinkDurACK != params[0] || blinkCountACK != params[1])
+        {
+            printf("blinkDurACK != sentDur || blinkCountACK != sentCount, retransmit?\n");
+            continue;
+        }
         param_ack = true;
         client_seq += 4;
         server_ack_val = ack.header.sequenceNumber;
