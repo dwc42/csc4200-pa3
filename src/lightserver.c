@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: lightserver -p <PORT> -l <LOG>\n");
         exit(EXIT_FAILURE);
     }
-
+    printf("%s\n", cfg.logfilePath);
     if (!setupGPIO())
     {
         printf("failed to setup GPIO\n");
