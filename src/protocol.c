@@ -373,7 +373,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 				continue;
 			}
 			free(clientPacketSYN.payload);
-			// printf("making ACK SYN packet\n");
+			printf("making ACK SYN packet\n");
 			Packet packetSYN = make_packet();
 			packetSYN.header.sequenceNumber = initialSequenceNumber;
 			packetSYN.header.acknowledgmentNumber = clientISN + 1;
@@ -384,7 +384,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			uint32_t retries = 0;
 			Packet clientPacketACK;
 			char bufferClientRawPacketACK[HEADER_SIZE];
-			// printf("made ACK SYN packet\n");
+			printf("made ACK SYN packet\n");
 			do
 			{
 				if (sendto(worker_socket, serializedPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, client_addr_len) < 0)
