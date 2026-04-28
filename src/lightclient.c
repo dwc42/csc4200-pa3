@@ -16,6 +16,7 @@ static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
 static bool breakKeepAliveLoop = false;
 // motionDetectionCallback
+int createClient(uint16_t blink_duration, uint16_t blink_count);
 bool coinFLip()
 {
     srand(time(NULL));
@@ -113,15 +114,15 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     if (!pid)
     {
-        client(500, 5);
+        createClient(500, 5);
     }
     else
     {
-        client(200, 7);
+        createClient(200, 7);
     }
 }
 
-int client(uint16_t blink_duration, uint16_t blink_count)
+int createClient(uint16_t blink_duration, uint16_t blink_count)
 {
 
     breakKeepAliveLoop = false;
