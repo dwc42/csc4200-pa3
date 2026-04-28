@@ -64,10 +64,9 @@ char *packet_serialize(Packet packet)
 	// printf("finished packet_serialize");
 	return serializedPacket;
 }
-Packet packet_deserialize(char *serializedPacket)
+Packet packet_deserialize(char *serializedPacket, ssize_t packetLength)
 {
 	// printf("run");
-	uint16_t packetLength = serializedPacket == NULL ? HEADER_SIZE : strlen(serializedPacket);
 	uint16_t payloadLength = packetLength - HEADER_SIZE;
 
 	Packet packet = make_packet();

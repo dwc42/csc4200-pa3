@@ -47,9 +47,10 @@ void motionDetectionCallback(void)
         free(raw);
 
         char recvBuf[HEADER_SIZE + MAX_PAYLOAD];
-        if (recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL) > 0)
+        ssize_t bytesRecvAck = recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL);
+        if (bytesRecvAck > 0)
         {
-            Packet ackPkt = packet_deserialize(recvBuf);
+            Packet ackPkt = packet_deserialize(recvBuf, bytesRecvAck);
             log_packet(ackPkt, cfg.logfilePath, Receive);
 
             if (ackPkt.header.acknowledgmentValid &&
@@ -129,9 +130,10 @@ int main(int argc, char *argv[])
         free(raw);
 
         char buf[256];
-        if (recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL) > 0)
+        ssize_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
+        if (bytesBlinkACK > 0)
         {
-            Packet ack = packet_deserialize(buf);
+            Packet ack = packet_deserialize(buf, bytesBlinkACK);
             log_packet(ack, cfg.logfilePath, Receive);
             param_ack = true;
             client_seq += 4;
