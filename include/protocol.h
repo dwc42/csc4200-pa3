@@ -75,7 +75,7 @@ typedef struct PacketHeader
 #define REMOTE_SERVER_PORT 5000
 #define BACKLOG_SIZE 5
 #define MAX_RETRIES 5
-#define MAX_PAYLOAD 1024 - HEADER_SIZE
+#define MAX_PAYLOAD 128 - HEADER_SIZE
 typedef struct Packet
 {
 	PacketHeader header;
