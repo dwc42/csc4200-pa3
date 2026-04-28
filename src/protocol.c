@@ -369,7 +369,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 				continue;
 			}
 			free(clientPacketSYN.payload);
-
+			printf("making ACK SYN packet\n");
 			Packet packetSYN = make_packet();
 			packetSYN.header.sequenceNumber = initialSequenceNumber;
 			packetSYN.header.acknowledgmentNumber = clientISN + 1;
