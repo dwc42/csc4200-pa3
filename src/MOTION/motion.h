@@ -44,7 +44,7 @@ extern "C"
 		int16_t eventId;
 		void *aux;
 	} MotionEvent;
-	typedef void MotionDetectEventCallback(void);
+	typedef void MotionDetectEventCallback(void *aux);
 	bool setPin(uint8_t pin);
 	int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback, void *aux);
 	bool unsubscribeMotionDetectEvent(int16_t eventId);

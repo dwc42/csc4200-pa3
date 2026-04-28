@@ -1,7 +1,8 @@
 #include "motion.h"
 int i = 0;
-void motionDetectEventCallback()
+void motionDetectEventCallback(void *aux)
 {
+	(void)aux;
 	printf("Motion Detected, %d\n", i++);
 }
 int main()
