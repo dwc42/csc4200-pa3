@@ -19,6 +19,7 @@ static bool breakKeepAliveLoop = false;
 void motionDetectionCallback(void)
 {
     // Check lock var if currently sending
+    printf("motion\n");
     if (is_sending)
         return;
 
@@ -101,6 +102,7 @@ int main(int argc, char *argv[])
     }
 
     breakKeepAliveLoop = false;
+    is_sending = false;
     setupGPIO();
     setPin(PIR_PIN);
     // if (wiringPiSetup() == -1)
