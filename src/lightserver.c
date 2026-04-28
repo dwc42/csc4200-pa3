@@ -114,7 +114,6 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
     }
     close(worker_socket);
 }
-
 int main(int argc, char *argv[])
 {
     ServerConfig cfg = parseServerArgs(argc, argv);
@@ -124,6 +123,20 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     printf("%s\n", cfg.logfilePath);
+    int pid = fork();
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+    if (!pid)
+    {
+        client(200, 5);
+    }
+    else
+    {
+        client(500, 3);
+    }
+}
+int client(uint16_t blinkDur, uint16_t blinkCount)
+{
     if (!setupGPIO())
     {
         printf("failed to setup GPIO\n");
