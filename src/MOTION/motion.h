@@ -38,6 +38,9 @@ extern "C"
 #endif
 
 #define MAX_MOTION_EVENT_CALLBACKS 32
+	extern uint16_t motionEventCallbacksLength;
+	extern MotionEvent motionEvents[16];
+	extern int8_t currentPin;
 	typedef struct MotionEvent
 	{
 		void (*motionEventCallback)(void *aux);
