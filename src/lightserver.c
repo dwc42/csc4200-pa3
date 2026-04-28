@@ -116,13 +116,17 @@ int main(int argc, char *argv[])
     }
 
     if (!setupGPIO())
+    {
+        printf("failed to setup GPIO\n");
         exit(EXIT_FAILURE);
+    }
 
     int server_socket = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in addr;
     // startListening() (handles main accept loop and forking in protocol.c)
     if (!startListening(server_socket, cfg, &addr, onConnectionCallback))
     {
+        printf("startListening failed\n");
         exit(EXIT_FAILURE);
     }
     return 0;
