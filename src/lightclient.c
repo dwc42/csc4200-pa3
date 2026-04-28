@@ -116,6 +116,7 @@ int main(int argc, char *argv[])
         printf("failed to create connection\n");
         exit(EXIT_FAILURE);
     }
+    printf("connected to server\n");
     client_seq = isn + 1; // Start seq after handshake
 
     // send initial blink params
@@ -137,15 +138,20 @@ int main(int argc, char *argv[])
 
         char buf[256];
         ssize_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
-        if (bytesBlinkACK > 0)
+        if (bytesBlinkACK <= 0)
         {
-            Packet ack = packet_deserialize(buf, bytesBlinkACK);
-            log_packet(ack, cfg.logfilePath, Receive);
-            param_ack = true;
-            client_seq += 4;
-            server_ack_val = ack.header.sequenceNumber;
-            free(ack.payload);
+            printf("bytesBlinkACK < 0\n");
+            continue;
         }
+
+        Packet ack = packet_deserialize(buf, bytesBlinkACK);
+        log_packet(ack, cfg.logfilePath, Receive);
+
+        param_ack = true;
+        client_seq += 4;
+        server_ack_val = ack.header.sequenceNumber;
+        free(ack.payload);
+
     } while (!param_ack && ++retries < MAX_RETRIES);
 
     printf("[client] Parameters set. Monitoring PIR sensor...\n");

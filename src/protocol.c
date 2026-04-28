@@ -118,7 +118,7 @@ void log_packet(Packet packet, char *filePath, PacketType packetType)
 		strcat(flagsBuffer, "ACK ");
 	if (packet.header.noMoreData)
 		strcat(flagsBuffer, "FIN ");
-	fprintf(fptr, "%s %u %u %s\n", packetTypeString, packet.header.sequenceNumber, packet.header.acknowledgmentNumber, flagsBuffer);
+	fprintf(fptr, "[%s] %s %u %u %s\n", dateString, packetTypeString, packet.header.sequenceNumber, packet.header.acknowledgmentNumber, flagsBuffer);
 	free(dateString);
 	fflush(fptr);
 	fclose(fptr);
