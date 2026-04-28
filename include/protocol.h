@@ -81,8 +81,8 @@ typedef struct Packet
 } Packet;
 
 Packet make_packet();
-char *packet_serialize(Packet packet);
-Packet packet_deserialize(char *serializedPacket, ssize_t packetLength);
+char *packet_serialize(Packet packet, uint64_t payloadLength);
+Packet packet_deserialize(char *serializedPacket, uint64_t packetLength);
 
 void printPacket(Packet packet);
 void log_packet(Packet packet, char *filePath, PacketType packetType);

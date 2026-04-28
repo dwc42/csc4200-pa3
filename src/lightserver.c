@@ -1,6 +1,9 @@
 #include "../include/protocol.h"
 
 #define LED_PIN 17
+
+#define LED_PARAM_PAYLOAD_LENGTH 4
+
 int blinkLED(uint16_t blinkDur, uint16_t blinkCount);
 void onConnectionCallback(int worker_socket, ServerConfig serverConfig, ConnectionData connectionData)
 {
@@ -17,8 +20,8 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
 
     while (1)
     {
-        ssize_t rec = recvfrom(worker_socket, buffer, sizeof(buffer), 0,
-                               (struct sockaddr *)connectionData.client_addr, &addr_len);
+        uint64_t rec = recvfrom(worker_socket, buffer, sizeof(buffer), 0,
+                                (struct sockaddr *)connectionData.client_addr, &addr_len);
         if (rec < 0)
         {
             printf("rec bytes < 0, retransmit?\n");
@@ -38,7 +41,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             finAck.header.acknowledgmentValid = 1;
             finAck.header.noMoreData = 1;
 
-            char *raw = packet_serialize(finAck);
+            char *raw = packet_serialize(finAck, 0);
             sendto(worker_socket, raw, HEADER_SIZE, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
             log_packet(finAck, serverConfig.logfilePath, Send);
 
@@ -55,8 +58,8 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         else if (payloadLength == 4)
         {
             uint16_t netDur, netCount;
-            memcpy(&netDur, pkt.payload, 2);
-            memcpy(&netCount, pkt.payload + 2, 2);
+            memcpy(&netDur, pkt.payload, LED_PARAM_PAYLOAD_LENGTH / 2);
+            memcpy(&netCount, pkt.payload + LED_PARAM_PAYLOAD_LENGTH / 2, LED_PARAM_PAYLOAD_LENGTH / 2);
 
             blinkDur = ntohs(netDur);
             blinkCount = ntohs(netCount);
@@ -70,9 +73,9 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + sizeof(uint16_t) * 2;
             ack.header.acknowledgmentValid = 1;
             ack.payload = pkt.payload;
-
-            char *raw = packet_serialize(ack);
-            sendto(worker_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
+            uint64_t payloadLength = LED_PARAM_PAYLOAD_LENGTH;
+            char *raw = packet_serialize(ack, payloadLength);
+            sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
             log_packet(ack, serverConfig.logfilePath, Send);
 
             server_seq += 4;
@@ -93,7 +96,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             ack.header.acknowledgmentValid = 1;
             ack.payload = pkt.payload;
 
-            char *raw = packet_serialize(ack);
+            char *raw = packet_serialize(ack, payloadLength);
             sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0,
                    (struct sockaddr *)connectionData.client_addr, addr_len);
             log_packet(ack, serverConfig.logfilePath, Send);

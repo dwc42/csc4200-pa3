@@ -41,14 +41,14 @@ void motionDetectionCallback(void)
         uint16_t payloadLength = 15; // strlen(":MotionDetected")
         pkt.payload = ":MotionDetected";
 
-        char *raw = packet_serialize(pkt);
+        char *raw = packet_serialize(pkt, payloadLength);
         sendto(client_socket, raw, HEADER_SIZE + payloadLength, 0,
                (struct sockaddr *)&server_addr, addr_len);
         log_packet(pkt, cfg.logfilePath, Send);
         free(raw);
 
         char recvBuf[HEADER_SIZE + MAX_PAYLOAD];
-        ssize_t bytesRecvAck = recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL);
+        uint64_t bytesRecvAck = recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL);
         if (bytesRecvAck > 0)
         {
             Packet ackPkt = packet_deserialize(recvBuf, bytesRecvAck);
@@ -76,7 +76,7 @@ void motionDetectionCallback(void)
         finPkt.header.sequenceNumber = client_seq;
         finPkt.header.noMoreData = 1;
 
-        char *finRaw = packet_serialize(finPkt);
+        char *finRaw = packet_serialize(finPkt, 0);
         sendto(client_socket, finRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, addr_len);
         log_packet(finPkt, cfg.logfilePath, Send);
         free(finRaw);
@@ -128,16 +128,15 @@ int main(int argc, char *argv[])
     {
         Packet p = make_packet();
         p.header.sequenceNumber = client_seq;
-        p.header.acknowledgmentValid = 1;
         p.payload = (char *)params;
 
-        char *raw = packet_serialize(p);
+        char *raw = packet_serialize(p, 0);
         sendto(client_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
         log_packet(p, cfg.logfilePath, Send);
         free(raw);
 
         char buf[256];
-        ssize_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
+        uint64_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
         if (bytesBlinkACK <= 0)
         {
             printf("bytesBlinkACK < 0, retransmit?\n");
@@ -166,7 +165,7 @@ int main(int argc, char *argv[])
     } while (!param_ack && ++retries < MAX_RETRIES);
     if (retries >= MAX_RETRIES)
     {
-        printf("failed to send LED params");
+        printf("failed to send LED params\n");
         return -1;
     }
     printf("[client] Parameters set. Monitoring PIR sensor...\n");
