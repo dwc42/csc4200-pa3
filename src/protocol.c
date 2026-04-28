@@ -36,7 +36,6 @@ Packet make_packet()
 	packet.header.acknowledgmentNumber = 0;
 	packet.header.acknowledgmentValid = 0;
 	packet.header.noMoreData = 0;
-	packet.header.payloadLength = 0;
 	packet.header.sequenceNumber = 0;
 	packet.header.synchronizeSequence = 0;
 	packet.header.unused = 0;
@@ -46,7 +45,8 @@ char *packet_serialize(Packet packet)
 {
 	char *serializedPacket;
 	//+1 for null termination
-	uint64_t serializedPacketSize = HEADER_SIZE + packet.header.payloadLength + 1;
+	uint16_t payloadLength = packet.payload == NULL ? 0 : strlen(packet.payload);
+	uint64_t serializedPacketSize = HEADER_SIZE + payloadLength + 1;
 	serializedPacket = malloc(serializedPacketSize);
 
 	uint8_t i = 0;
@@ -59,14 +59,17 @@ char *packet_serialize(Packet packet)
 	bufferNetworkInt = htonl((packet.header.unused << 3) | (packet.header.acknowledgmentValid << 2) | (packet.header.synchronizeSequence << 1) | packet.header.noMoreData);
 	memcpy(serializedPacket + sizeof(uint32_t) * i++, &bufferNetworkInt, sizeof(uint32_t));
 	// printf("finished packet_serialize of header\n");
-	memcpy(serializedPacket + HEADER_SIZE, packet.payload, packet.header.payloadLength);
-	serializedPacket[HEADER_SIZE + packet.header.payloadLength] = '\0';
+	memcpy(serializedPacket + HEADER_SIZE, packet.payload, payloadLength);
+	serializedPacket[HEADER_SIZE + payloadLength] = '\0';
 	// printf("finished packet_serialize");
 	return serializedPacket;
 }
 Packet packet_deserialize(char *serializedPacket)
 {
 	// printf("run");
+	uint16_t packetLength = serializedPacket == NULL ? HEADER_SIZE : strlen(serializedPacket);
+	uint16_t payloadLength = packetLength - HEADER_SIZE;
+
 	Packet packet = make_packet();
 	uint8_t i = 0;
 	uint32_t bufferInt;
@@ -82,9 +85,9 @@ Packet packet_deserialize(char *serializedPacket)
 	packet.header.noMoreData = bufferInt & 0x1u;
 
 	// printf("payloadLength: %d,\n", packet.header.payloadLength);
-	packet.payload = malloc(packet.header.payloadLength + 1);
-	memcpy(packet.payload, serializedPacket + HEADER_SIZE, packet.header.payloadLength);
-	packet.payload[packet.header.payloadLength] = '\0';
+	packet.payload = malloc(payloadLength + 1);
+	memcpy(packet.payload, serializedPacket + HEADER_SIZE, payloadLength);
+	packet.payload[payloadLength] = '\0';
 	return packet;
 }
 

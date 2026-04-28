@@ -25,7 +25,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         Packet pkt = packet_deserialize(buffer);
         log_packet(pkt, serverConfig.logfilePath, Receive);
 
-        uint16_t payloadLength = strlen(pkt.payload);
+        uint16_t payloadLength = pkt.payload == NULL ? 0 : strlen(pkt.payload);
         // If fin packet
         if (pkt.header.noMoreData)
         {
