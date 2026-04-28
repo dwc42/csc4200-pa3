@@ -215,12 +215,13 @@ bool createConnection(int socket_client, ClientConfig clientConfig, struct socka
 		}
 		log_packet(packetSYN, clientConfig.logfilePath, Send);
 		printf("sent cient SYN\n");
-		if (recvfrom(socket_client, bufferRawServerPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)server_addr, &server_addr_len) < 0)
+		ssize_t bytesSYN = recvfrom(socket_client, bufferRawServerPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)server_addr, &server_addr_len);
+		if (bytesSYN < 0)
 		{
 			printf("timeout or recv failed, retransmit?\n");
 			continue;
 		}
-		serverPacketSYN = packet_deserialize(bufferRawServerPacketSYN);
+		serverPacketSYN = packet_deserialize(bufferRawServerPacketSYN, bytesSYN);
 		log_packet(serverPacketSYN, clientConfig.logfilePath, Receive);
 		if (!serverPacketSYN.header.synchronizeSequence || !serverPacketSYN.header.acknowledgmentValid)
 		{
@@ -341,8 +342,8 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 		}
 		socklen_t client_addr_len = sizeof(struct sockaddr_in);
 		char bufferClientRawPacketSYN[HEADER_SIZE];
-
-		if (recvfrom(server_socket, bufferClientRawPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
+		ssize_t bytesCLientSYN = recvfrom(server_socket, bufferClientRawPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
+		if (bytesCLientSYN < 0)
 		{
 			perror("receive syc failed");
 			continue;
@@ -355,7 +356,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			struct sockaddr_in worker_addr;
 			uint16_t worker_port;
 			createServerWorkerSocket(&worker_socket, &worker_addr, &worker_port);
-			Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN);
+			Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN, bytesCLientSYN);
 			log_packet(clientPacketSYN, serverConfig.logfilePath, Receive);
 			srand((unsigned)time(NULL) ^ getpid());
 			uint32_t initialSequenceNumber = rand();
@@ -393,12 +394,14 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 					perror("setsockopt failed");
 					continue;
 				}
-				if (recvfrom(worker_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len) < 0)
+
+				ssize_t bytesACK = recvfrom(worker_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
+				if (bytesACK < 0)
 				{
 					perror("timeout or recv failed, retransmit?");
 					continue;
 				}
-				clientPacketACK = packet_deserialize(bufferClientRawPacketACK);
+				clientPacketACK = packet_deserialize(bufferClientRawPacketACK, bytesACK);
 				log_packet(clientPacketACK, serverConfig.logfilePath, Receive);
 				if (!clientPacketACK.header.acknowledgmentValid || clientPacketACK.header.synchronizeSequence)
 				{
