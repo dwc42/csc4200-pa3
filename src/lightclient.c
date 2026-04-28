@@ -13,7 +13,7 @@ static uint32_t client_seq;
 static uint32_t server_ack_val; // The next seq we expect from server
 static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
-
+static bool breakKeepAliveLoop = false;
 // motionDetectionCallback
 void motionDetectionCallback(void)
 {
@@ -79,8 +79,9 @@ void motionDetectionCallback(void)
         sendto(client_socket, finRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, addr_len);
         log_packet(finPkt, cfg.logfilePath, Send);
         free(finRaw);
-
+        breakKeepAliveLoop = true;
         printf("[client] Interaction complete. Exiting.\n");
+
         close(client_socket);
         exit(EXIT_SUCCESS);
     }
@@ -90,6 +91,7 @@ void motionDetectionCallback(void)
 
 int main(int argc, char *argv[])
 {
+    breakKeepAliveLoop = false;
     setupGPIO();
     cfg = parseClientArgs(argc, argv);
     if (!cfg.serverIp || cfg.port == 0)
@@ -149,9 +151,9 @@ int main(int argc, char *argv[])
     // (PIR_PIN, INT_EDGE_RISING, callback)
     subscribeMotionDetectEvent(motionDetectionCallback);
 
-    // while (1)
-    // {
-    //     delay(1000);
-    // } // Keep main thread alive
+    while (!breakKeepAliveLoop)
+    {
+        delay(1000);
+    } // Keep main thread alive
     return 0;
 }
