@@ -24,8 +24,9 @@ bool coinFLip()
     // rand() % 2 returns 0 or 1
     return rand() % 2 == 1;
 }
-void motionDetectionCallback(void)
+void motionDetectionCallback(void *aux)
 {
+
     if (!coinFLip())
         return;
     // Check lock var if currently sending
@@ -93,7 +94,9 @@ void motionDetectionCallback(void)
         free(finRaw);
         breakKeepAliveLoop = true;
         printf("[client] Interaction complete. Exiting.\n");
-
+        int16_t eventId = aux == NULL ? -1 : *((int16_t *)aux);
+        if (eventId >= 0)
+            unsubscribeMotionDetectEvent(eventId);
         close(client_socket);
         exit(EXIT_SUCCESS);
     }
@@ -199,7 +202,9 @@ int createClient(uint16_t blink_duration, uint16_t blink_count)
 
     // subscribeMotionDetectEvent() using WiringPi Interrupt
     // (PIR_PIN, INT_EDGE_RISING, callback)
-    subscribeMotionDetectEvent(motionDetectionCallback);
+
+    int16_t eventId;
+    eventId = subscribeMotionDetectEvent(motionDetectionCallback, &eventId);
 
     while (!breakKeepAliveLoop)
     {

@@ -10,7 +10,7 @@ void onMotionDetectedInternal(void)
 {
 	for (uint16_t i = 0; i < motionEventCallbacksLength; i++)
 	{
-		motionEvents[i].motionEventCallback();
+		motionEvents[i].motionEventCallback(motionEvents[i].aux);
 	}
 }
 bool motionEnabled = false;
@@ -53,12 +53,13 @@ bool disableMotionDetectedInterrupt()
 	return true;
 }
 int16_t currentEventId = 0;
-int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback)
+int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback, void *aux)
 {
 	if (motionEventCallbacksLength >= MAX_MOTION_EVENT_CALLBACKS)
 		return -1;
 	motionEvents[motionEventCallbacksLength].motionEventCallback = callback;
 	motionEvents[motionEventCallbacksLength].eventId = currentEventId++;
+	motionEvents[motionEventCallbacksLength].aux = aux;
 	motionEventCallbacksLength++;
 	if (!motionEnabled && !enableMotionDetectedInterrupt())
 		return -1;

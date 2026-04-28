@@ -40,12 +40,13 @@ extern "C"
 #define MAX_MOTION_EVENT_CALLBACKS 32
 	typedef struct MotionEvent
 	{
-		void (*motionEventCallback)(void);
+		void (*motionEventCallback)(void *aux);
 		int16_t eventId;
+		void *aux;
 	} MotionEvent;
 	typedef void MotionDetectEventCallback(void);
 	bool setPin(uint8_t pin);
-	int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback);
+	int16_t subscribeMotionDetectEvent(MotionDetectEventCallback callback, void *aux);
 	bool unsubscribeMotionDetectEvent(int16_t eventId);
 	bool setupGPIO();
 #ifdef __cplusplus
