@@ -21,14 +21,14 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
                                (struct sockaddr *)connectionData.client_addr, &addr_len);
         if (rec < 0)
         {
-            printf("rec bytes < 0, retransmit?");
+            printf("rec bytes < 0, retransmit?\n");
             continue;
         }
 
         Packet pkt = packet_deserialize(buffer, rec);
         log_packet(pkt, serverConfig.logfilePath, Receive);
 
-        uint16_t payloadLength = pkt.payload == NULL ? 0 : strlen(pkt.payload);
+        uint16_t payloadLength = rec - HEADER_SIZE;
         // If fin packet
         if (pkt.header.noMoreData)
         {
