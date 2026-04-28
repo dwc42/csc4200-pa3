@@ -4,6 +4,8 @@
 int blinkLED(uint16_t blinkDur, uint16_t blinkCount);
 void onConnectionCallback(int worker_socket, ServerConfig serverConfig, ConnectionData connectionData)
 {
+    printf("[server] Session started. Waiting for packets...\n");
+
     uint16_t blinkDur = 0, blinkCount = 0;
     bool paramsSet = false;
     socklen_t addr_len = sizeof(struct sockaddr_in);
@@ -12,8 +14,6 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
     // server_isn and client_isn from handshake
     uint32_t server_seq = *connectionData.server_isn + 1;
     uint32_t expected_client_seq = *connectionData.client_isn + 1;
-
-    printf("[server] Session started. Waiting for packets...\n");
 
     while (1)
     {

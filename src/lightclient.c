@@ -106,6 +106,7 @@ int main(int argc, char *argv[])
     uint32_t isn;
     if (!createConnection(client_socket, cfg, &server_addr, &isn))
     {
+        printf("failed to create connection\n");
         exit(EXIT_FAILURE);
     }
     client_seq = isn + 1; // Start seq after handshake
