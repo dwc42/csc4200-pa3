@@ -4,7 +4,7 @@
 #define PIR_PIN 7
 #define BLINK_DURATION_MS 500
 #define BLINK_COUNT 5
-
+#define MAX_MOTION_COUNT 10
 // Global state for the motion callback
 static int client_socket;
 static struct sockaddr_in server_addr;
@@ -28,7 +28,7 @@ void motionDetectionCallback(void)
     bool acknowledged = false;
     socklen_t addr_len = sizeof(struct sockaddr_in);
 
-    printf("[client] Motion detected! (%d/10)\n", motion_detected_count + 1);
+    printf("[client] Motion detected! (%d/%u)\n", motion_detected_count + 1, MAX_MOTION_COUNT);
 
     // do { motionDetected Packet; Receive ack } while (< max retries)
     do
@@ -37,11 +37,11 @@ void motionDetectionCallback(void)
         pkt.header.sequenceNumber = client_seq;
         pkt.header.acknowledgmentNumber = server_ack_val;
         pkt.header.acknowledgmentValid = 1;
-        pkt.header.payloadLength = 15; // strlen(":MotionDetected")
+        uint16_t payloadLength = 15; // strlen(":MotionDetected")
         pkt.payload = ":MotionDetected";
 
         char *raw = packet_serialize(pkt);
-        sendto(client_socket, raw, HEADER_SIZE + pkt.header.payloadLength, 0,
+        sendto(client_socket, raw, HEADER_SIZE + payloadLength, 0,
                (struct sockaddr *)&server_addr, addr_len);
         log_packet(pkt, cfg.logfilePath, Send);
         free(raw);
@@ -53,10 +53,10 @@ void motionDetectionCallback(void)
             log_packet(ackPkt, cfg.logfilePath, Receive);
 
             if (ackPkt.header.acknowledgmentValid &&
-                ackPkt.header.acknowledgmentNumber == (client_seq + pkt.header.payloadLength))
+                ackPkt.header.acknowledgmentNumber == (client_seq + payloadLength))
             {
 
-                client_seq += pkt.header.payloadLength;
+                client_seq += payloadLength;
                 server_ack_val = ackPkt.header.sequenceNumber;
                 acknowledged = true;
             }
@@ -66,9 +66,9 @@ void motionDetectionCallback(void)
 
     // If i++ >= 10 send fin packet
     motion_detected_count++;
-    if (motion_detected_count >= 10)
+    if (motion_detected_count >= MAX_MOTION_COUNT)
     {
-        printf("[client] 10 detections reached. Sending FIN...\n");
+        printf("[client] %u detections reached. Sending FIN...\n", MAX_MOTION_COUNT);
 
         Packet finPkt = make_packet();
         finPkt.header.sequenceNumber = client_seq;
@@ -121,7 +121,6 @@ int main(int argc, char *argv[])
         Packet p = make_packet();
         p.header.sequenceNumber = client_seq;
         p.header.acknowledgmentValid = 1;
-        p.header.payloadLength = 4;
         p.payload = (char *)params;
 
         char *raw = packet_serialize(p);

@@ -25,6 +25,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         Packet pkt = packet_deserialize(buffer);
         log_packet(pkt, serverConfig.logfilePath, Receive);
 
+        uint16_t payloadLength = strlen(pkt.payload);
         // If fin packet
         if (pkt.header.noMoreData)
         {
@@ -48,7 +49,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         }
 
         // If led packet (Length 4)
-        if (pkt.header.payloadLength == 4)
+        if (payloadLength == 4)
         {
             uint16_t netDur, netCount;
             memcpy(&netDur, pkt.payload, 2);
@@ -63,10 +64,9 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             // Send ack (echo payload back)
             Packet ack = make_packet();
             ack.header.sequenceNumber = server_seq;
-            ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + pkt.header.payloadLength;
+            ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + sizeof(uint16_t) * 2;
             ack.header.acknowledgmentValid = 1;
             ack.payload = pkt.payload;
-            ack.header.payloadLength = 4;
 
             char *raw = packet_serialize(ack);
             sendto(worker_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
@@ -83,21 +83,19 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
 
             // Blink the LED
             blinkLED(blinkDur, blinkCount);
-
             // Send ACK (echo payload)
             Packet ack = make_packet();
             ack.header.sequenceNumber = server_seq;
-            ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + pkt.header.payloadLength;
+            ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + payloadLength;
             ack.header.acknowledgmentValid = 1;
             ack.payload = pkt.payload;
-            ack.header.payloadLength = pkt.header.payloadLength;
 
             char *raw = packet_serialize(ack);
-            sendto(worker_socket, raw, HEADER_SIZE + ack.header.payloadLength, 0,
+            sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0,
                    (struct sockaddr *)connectionData.client_addr, addr_len);
             log_packet(ack, serverConfig.logfilePath, Send);
 
-            server_seq += ack.header.payloadLength;
+            server_seq += payloadLength;
             free(raw);
         }
 
