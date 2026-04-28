@@ -21,7 +21,8 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
                                (struct sockaddr *)connectionData.client_addr, &addr_len);
         if (rec < 0)
         {
-            printf("rec bytes < 0, retransmit?") continue;
+            printf("rec bytes < 0, retransmit?");
+            continue;
         }
 
         Packet pkt = packet_deserialize(buffer, rec);
