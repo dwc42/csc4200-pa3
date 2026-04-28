@@ -16,8 +16,17 @@ static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
 static bool breakKeepAliveLoop = false;
 // motionDetectionCallback
+bool coinFLip()
+{
+    srand(time(NULL));
+
+    // rand() % 2 returns 0 or 1
+    return rand() % 2 == 1;
+}
 void motionDetectionCallback(void)
 {
+    if (!coinFLip())
+        return;
     // Check lock var if currently sending
     printf("motion\n");
     if (is_sending)
@@ -90,7 +99,6 @@ void motionDetectionCallback(void)
 
     is_sending = false; // Release lock
 }
-
 int main(int argc, char *argv[])
 {
 
@@ -100,6 +108,21 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: lightclient -s <IP> -p <PORT> -l <LOG>\n");
         exit(EXIT_FAILURE);
     }
+    int pid = fork();
+    if (pid < 0)
+        exit(EXIT_FAILURE);
+    if (!pid)
+    {
+        client(500, 5);
+    }
+    else
+    {
+        client(200, 7);
+    }
+}
+
+int client(uint16_t blink_duration, uint16_t blink_count)
+{
 
     breakKeepAliveLoop = false;
     is_sending = false;
