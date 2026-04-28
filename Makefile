@@ -12,9 +12,15 @@ CLIENT_ARGS ?=
 OBJ_DIR = obj
 SRC     = src
 
-.PHONY: all clean lightserver-asan lightclient-asan leak-lightserver leak-lightclient leak
+.PHONY: all clean lightserver-asan lightclient-asan leak-lightserver leak-lightclient leak led motion
 
-all: lightserver lightclient
+all: lightserver lightclient led motion
+led:
+	$(MAKE) -C $(SRC)/LED
+
+motion:
+	$(MAKE) -C $(SRC)/MOTION
+
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
@@ -44,3 +50,5 @@ leak: leak-lightserver leak-lightclient
 
 clean:
 	rm -rf $(OBJ_DIR) lightserver lightclient lightserver-asan lightclient-asan received_* *.log
+	$(MAKE) -C $(SRC)/LED clean
+	$(MAKE) -C $(SRC)/MOTION clean
