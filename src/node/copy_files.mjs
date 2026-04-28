@@ -1,5 +1,5 @@
 import path from "path";
-import fs from "fs";
+import fs, { rmSync, write, writeSync } from "fs";
 
 /**
  * 
@@ -49,9 +49,11 @@ function copyRecursiveSync(src, dest, excludeCallback, deleteDest = false) {
 	copyRecursiveSyncInternal(src, srcFolderNameWithDest);
 };
 
-const code_paths = [path.resolve("./sprint1"), path.resolve("./sprint2"), path.resolve("./sprint3")];
+const code_paths = [path.resolve("./src"), path.resolve("./include")];
 const code_dest = path.resolve("../infrastructure-setup-dwc42/assignment-3-detect-a-person/");
 code_paths.forEach(code_path => {
 	console.log(code_dest, code_path);
 	copyRecursiveSync(code_path, code_dest, undefined, true);
+	rmSync(path.join(code_dest, "node"), { "recursive": true });
 });
+writeSync(path.join(code_dest, "Makefile"), fs.readFileSync(path.resolve("./Makefile")));
