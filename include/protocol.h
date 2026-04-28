@@ -31,7 +31,8 @@
  */
 #ifndef PROTOCOL_H_
 #define PROTOCOL_H_
-
+#include "../src/LED/led.h"
+#include "../src/MOTION/motion.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
