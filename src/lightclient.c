@@ -164,7 +164,11 @@ int main(int argc, char *argv[])
         free(ack.payload);
 
     } while (!param_ack && ++retries < MAX_RETRIES);
-
+    if (retries >= MAX_RETRIES)
+    {
+        printf("failed to send LED params");
+        return -1;
+    }
     printf("[client] Parameters set. Monitoring PIR sensor...\n");
 
     // subscribeMotionDetectEvent() using WiringPi Interrupt

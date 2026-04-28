@@ -20,7 +20,9 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         ssize_t rec = recvfrom(worker_socket, buffer, sizeof(buffer), 0,
                                (struct sockaddr *)connectionData.client_addr, &addr_len);
         if (rec < 0)
-            continue;
+        {
+            printf("rec bytes < 0, retransmit?") continue;
+        }
 
         Packet pkt = packet_deserialize(buffer, rec);
         log_packet(pkt, serverConfig.logfilePath, Receive);
@@ -49,7 +51,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         }
 
         // If led packet (Length 4)
-        if (payloadLength == 4)
+        else if (payloadLength == 4)
         {
             uint16_t netDur, netCount;
             memcpy(&netDur, pkt.payload, 2);
@@ -97,6 +99,10 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
 
             server_seq += payloadLength;
             free(raw);
+        }
+        else
+        {
+            printf("packet sorting failed\n");
         }
 
         free(pkt.payload);
