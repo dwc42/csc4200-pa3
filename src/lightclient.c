@@ -48,7 +48,7 @@ void motionDetectionCallback(void)
         free(raw);
 
         char recvBuf[HEADER_SIZE + MAX_PAYLOAD];
-        uint64_t bytesRecvAck = recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL);
+        int64_t bytesRecvAck = recvfrom(client_socket, recvBuf, sizeof(recvBuf), 0, NULL, NULL);
         if (bytesRecvAck > 0)
         {
             Packet ackPkt = packet_deserialize(recvBuf, bytesRecvAck);
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
         free(raw);
 
         char buf[256];
-        uint64_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
+        int64_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
         if (bytesBlinkACK <= 0)
         {
             printf("bytesBlinkACK < 0, retransmit?\n");

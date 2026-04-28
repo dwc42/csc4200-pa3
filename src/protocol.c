@@ -41,11 +41,11 @@ Packet make_packet()
 	packet.header.unused = 0;
 	return packet;
 }
-char *packet_serialize(Packet packet, uint64_t payloadLength)
+char *packet_serialize(Packet packet, int64_t payloadLength)
 {
 	char *serializedPacket;
 	//+1 for null termination
-	uint64_t serializedPacketSize = HEADER_SIZE + payloadLength + 1;
+	int64_t serializedPacketSize = HEADER_SIZE + payloadLength + 1;
 	serializedPacket = malloc(serializedPacketSize);
 
 	uint8_t i = 0;
@@ -63,7 +63,7 @@ char *packet_serialize(Packet packet, uint64_t payloadLength)
 	// printf("finished packet_serialize");
 	return serializedPacket;
 }
-Packet packet_deserialize(char *serializedPacket, uint64_t packetLength)
+Packet packet_deserialize(char *serializedPacket, int64_t packetLength)
 {
 	// printf("run");
 	uint16_t payloadLength = packetLength - HEADER_SIZE;
@@ -214,7 +214,7 @@ bool createConnection(int socket_client, ClientConfig clientConfig, struct socka
 		}
 		log_packet(packetSYN, clientConfig.logfilePath, Send);
 		printf("sent cient SYN\n");
-		uint64_t bytesSYN = recvfrom(socket_client, bufferRawServerPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)server_addr, &server_addr_len);
+		int64_t bytesSYN = recvfrom(socket_client, bufferRawServerPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)server_addr, &server_addr_len);
 		if (bytesSYN < 0)
 		{
 			printf("timeout or recv failed, retransmit?\n");
@@ -341,7 +341,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 		}
 		socklen_t client_addr_len = sizeof(struct sockaddr_in);
 		char bufferClientRawPacketSYN[HEADER_SIZE];
-		uint64_t bytesCLientSYN = recvfrom(server_socket, bufferClientRawPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
+		int64_t bytesCLientSYN = recvfrom(server_socket, bufferClientRawPacketSYN, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
 		if (bytesCLientSYN < 0)
 		{
 			perror("receive syc failed");
@@ -399,7 +399,7 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 					continue;
 				}
 
-				uint64_t bytesACK = recvfrom(worker_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
+				int64_t bytesACK = recvfrom(worker_socket, bufferClientRawPacketACK, HEADER_SIZE, 0, (struct sockaddr *)&client_addr, &client_addr_len);
 				if (bytesACK < 0)
 				{
 					perror("timeout or recv failed, retransmit?");

@@ -20,8 +20,8 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
 
     while (1)
     {
-        uint64_t rec = recvfrom(worker_socket, buffer, sizeof(buffer), 0,
-                                (struct sockaddr *)connectionData.client_addr, &addr_len);
+        int64_t rec = recvfrom(worker_socket, buffer, sizeof(buffer), 0,
+                               (struct sockaddr *)connectionData.client_addr, &addr_len);
         if (rec < 0)
         {
             printf("rec bytes < 0, retransmit?\n");
@@ -73,7 +73,7 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             ack.header.acknowledgmentNumber = pkt.header.sequenceNumber + sizeof(uint16_t) * 2;
             ack.header.acknowledgmentValid = 1;
             ack.payload = pkt.payload;
-            uint64_t payloadLength = LED_PARAM_PAYLOAD_LENGTH;
+            int64_t payloadLength = LED_PARAM_PAYLOAD_LENGTH;
             char *raw = packet_serialize(ack, payloadLength);
             sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
             log_packet(ack, serverConfig.logfilePath, Send);
