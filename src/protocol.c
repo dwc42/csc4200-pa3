@@ -355,7 +355,11 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 			int worker_socket;
 			struct sockaddr_in worker_addr;
 			uint16_t worker_port;
-			createServerWorkerSocket(&worker_socket, &worker_addr, &worker_port);
+			if (!createServerWorkerSocket(&worker_socket, &worker_addr, &worker_port))
+			{
+				printf("failed to create worker socket");
+				continue;
+			}
 			Packet clientPacketSYN = packet_deserialize(bufferClientRawPacketSYN, bytesCLientSYN);
 			log_packet(clientPacketSYN, serverConfig.logfilePath, Receive);
 			srand((unsigned)time(NULL) ^ getpid());
