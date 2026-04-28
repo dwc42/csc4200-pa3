@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
         p.header.sequenceNumber = client_seq;
         p.payload = (char *)params;
 
-        char *raw = packet_serialize(p, 0);
+        char *raw = packet_serialize(p, 4);
         sendto(client_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
         log_packet(p, cfg.logfilePath, Send);
         free(raw);

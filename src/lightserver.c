@@ -3,6 +3,7 @@
 #define LED_PIN 17
 
 #define LED_PARAM_PAYLOAD_LENGTH 4
+#define LED_PARAM_LENGTH 2
 
 int blinkLED(uint16_t blinkDur, uint16_t blinkCount);
 void onConnectionCallback(int worker_socket, ServerConfig serverConfig, ConnectionData connectionData)
@@ -58,8 +59,8 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
         else if (payloadLength == 4)
         {
             uint16_t netDur, netCount;
-            memcpy(&netDur, pkt.payload, LED_PARAM_PAYLOAD_LENGTH / 2);
-            memcpy(&netCount, pkt.payload + LED_PARAM_PAYLOAD_LENGTH / 2, LED_PARAM_PAYLOAD_LENGTH / 2);
+            memcpy(&netDur, pkt.payload, LED_PARAM_LENGTH);
+            memcpy(&netCount, pkt.payload + LED_PARAM_LENGTH, LED_PARAM_LENGTH);
 
             blinkDur = ntohs(netDur);
             blinkCount = ntohs(netCount);
