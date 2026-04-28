@@ -143,12 +143,12 @@ int main(int argc, char *argv[])
 
 int blinkLED(uint16_t blinkDur, uint16_t blinkCount)
 {
-    Led *led = led_create(LED_PIN);
-    if (!led)
-        return 1;
     int pid = fork();
     if (!pid)
     {
+        Led *led = led_create(LED_PIN);
+        if (!led)
+            return 1;
         if (led_blink(led, (uint16_t)blinkCount, (uint16_t)blinkDur, (uint16_t)blinkDur, 0) < 0)
         {
             led_destroy(led);
@@ -158,6 +158,7 @@ int blinkLED(uint16_t blinkDur, uint16_t blinkCount)
             usleep(10000);
 
         led_destroy(led);
+        exit(0);
     }
     return 0;
 }
