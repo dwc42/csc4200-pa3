@@ -17,6 +17,12 @@ static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
 static bool breakKeepAliveLoop = false;
 // motionDetectionCallback
+typedef struct MotionEventAux
+{
+    int16_t eventId;
+    int8_t pin;
+} MotionEventAux;
+
 int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin);
 bool coinFLip()
 {
@@ -31,10 +37,10 @@ void motionDetectionCallback(void *aux)
     if (!coinFLip())
         return;
     // Check lock var if currently sending
-    printf("motion\n");
+    // printf("motion\n");
     if (is_sending)
         return;
-
+    uint8_t pin = aux == NULL ? -1 : ((MotionEventAux *)aux)->pin;
     // If not set lock var
     is_sending = true;
 
@@ -42,7 +48,7 @@ void motionDetectionCallback(void *aux)
     bool acknowledged = false;
     socklen_t addr_len = sizeof(struct sockaddr_in);
 
-    printf("[client] Motion detected! (%d/%u)\n", motion_detected_count + 1, MAX_MOTION_COUNT);
+    printf("[%u] [client] Motion detected! (%d/%u)\n", pin, motion_detected_count + 1, MAX_MOTION_COUNT);
 
     // do { motionDetected Packet; Receive ack } while (< max retries)
     do
@@ -83,7 +89,7 @@ void motionDetectionCallback(void *aux)
     motion_detected_count++;
     if (motion_detected_count >= MAX_MOTION_COUNT)
     {
-        printf("[client] %u detections reached. Sending FIN...\n", MAX_MOTION_COUNT);
+        printf("[%u] [client] %u detections reached. Sending FIN...\n", pin, MAX_MOTION_COUNT);
 
         Packet finPkt = make_packet();
         finPkt.header.sequenceNumber = client_seq;
@@ -94,8 +100,8 @@ void motionDetectionCallback(void *aux)
         log_packet(finPkt, cfg.logfilePath, Send);
         free(finRaw);
         breakKeepAliveLoop = true;
-        printf("[client] Interaction complete. Exiting.\n");
-        int16_t eventId = aux == NULL ? -1 : *((int16_t *)aux);
+        printf("[%u] [client] Interaction complete. Exiting.\n", pin);
+        int16_t eventId = aux == NULL ? -1 : ((MotionEventAux *)aux)->eventId;
         if (eventId >= 0)
             unsubscribeMotionDetectEvent(eventId);
         close(client_socket);
@@ -204,8 +210,9 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
     // subscribeMotionDetectEvent() using WiringPi Interrupt
     // (PIR_PIN, INT_EDGE_RISING, callback)
 
-    int16_t eventId;
-    eventId = subscribeMotionDetectEvent(motionDetectionCallback, &eventId);
+    MotionEventAux motionEventAux;
+    motionEventAux.pin = pin;
+    motionEventAux.eventId = subscribeMotionDetectEvent(motionDetectionCallback, &motionEventAux);
 
     while (!breakKeepAliveLoop)
     {
