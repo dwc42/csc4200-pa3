@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Usage: lightclient -s <IP> -p <PORT> -l <LOG>\n");
         exit(EXIT_FAILURE);
     }
-    setupGPIO();
+
     int pid = fork();
     if (pid < 0)
         exit(EXIT_FAILURE);
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 
 int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
 {
-
+    setupGPIO();
     setPin(pin);
     breakKeepAliveLoop = false;
     is_sending = false;
