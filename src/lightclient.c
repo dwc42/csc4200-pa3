@@ -150,10 +150,10 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
     uint32_t isn;
     if (!createConnection(client_socket, cfg, &server_addr, &isn))
     {
-        printf("failed to create connection\n");
+        printf("[%u] failed to create connection\n", pin);
         exit(EXIT_FAILURE);
     }
-    printf("connected to server\n");
+    printf("[%u] connected to server\n", pin);
     client_seq = isn + 1; // Start seq after handshake
 
     // send initial blink params
@@ -176,7 +176,7 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
         int64_t bytesBlinkACK = recvfrom(client_socket, buf, sizeof(buf), 0, NULL, NULL);
         if (bytesBlinkACK <= 0)
         {
-            printf("bytesBlinkACK < 0, retransmit?\n");
+            printf("[%u] bytesBlinkACK < 0, retransmit?\n", pin);
             continue;
         }
 
@@ -191,7 +191,7 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
         uint16_t blinkCountACK = ntohs(netCount);
         if (blinkDurACK != blink_duration || blinkCountACK != blink_count)
         {
-            printf("blinkDurACK != sentDur || blinkCountACK != sentCount, retransmit?\n");
+            printf("[%u] blinkDurACK != sentDur || blinkCountACK != sentCount, retransmit?\n", pin);
             continue;
         }
         param_ack = true;
@@ -202,10 +202,10 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
     } while (!param_ack && ++retries < MAX_RETRIES);
     if (retries >= MAX_RETRIES)
     {
-        printf("failed to send LED params\n");
+        printf("[%u] failed to send LED params\n", pin);
         return -1;
     }
-    printf("[client] Parameters set. Monitoring PIR sensor...\n");
+    printf("[%u] [client] Parameters set. Monitoring PIR sensor...\n", pin);
 
     // subscribeMotionDetectEvent() using WiringPi Interrupt
     // (PIR_PIN, INT_EDGE_RISING, callback)
