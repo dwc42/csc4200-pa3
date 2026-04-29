@@ -1,4 +1,5 @@
 #include "../include/protocol.h"
+#include <fcntl.h>
 
 // GPIO Configuration
 #define PIR_PIN 27
@@ -16,6 +17,8 @@ static uint32_t server_ack_val; // The next seq we expect from server
 static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
 static bool breakKeepAliveLoop = false;
+static int token_read_fd = -1;
+static int token_write_fd = -1;
 // motionDetectionCallback
 typedef struct MotionEventAux
 {
@@ -24,22 +27,18 @@ typedef struct MotionEventAux
 } MotionEventAux;
 
 int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin);
-bool coinFLip()
-{
-    srand((unsigned)time(NULL) ^ getpid());
-
-    // rand() % 2 returns 0 or 1
-    return rand() % 2 == 1;
-}
 void motionDetectionCallback(void *aux)
 {
-
-    if (!coinFLip())
+    char token;
+    if (read(token_read_fd, &token, 1) <= 0)
         return;
     // Check lock var if currently sending
     // printf("motion\n");
     if (is_sending)
+    {
+        write(token_write_fd, "T", 1);
         return;
+    }
     uint8_t pin = aux == NULL ? -1 : ((MotionEventAux *)aux)->pin;
     // If not set lock var
     is_sending = true;
@@ -109,6 +108,7 @@ void motionDetectionCallback(void *aux)
     }
 
     is_sending = false; // Release lock
+    write(token_write_fd, "T", 1);
 }
 int main(int argc, char *argv[])
 {
@@ -120,15 +120,34 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    int parent_to_child[2];
+    int child_to_parent[2];
+    if (pipe(parent_to_child) < 0 || pipe(child_to_parent) < 0)
+    {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
     int pid = fork();
     if (pid < 0)
         exit(EXIT_FAILURE);
     if (!pid)
     {
+        close(parent_to_child[1]);
+        close(child_to_parent[0]);
+        token_read_fd = parent_to_child[0];
+        token_write_fd = child_to_parent[1];
+        fcntl(token_read_fd, F_SETFL, O_NONBLOCK);
         createClient(500, 5, PIR_PIN);
     }
     else
     {
+        close(parent_to_child[0]);
+        close(child_to_parent[1]);
+        token_read_fd = child_to_parent[0];
+        token_write_fd = parent_to_child[1];
+        fcntl(token_read_fd, F_SETFL, O_NONBLOCK);
+        write(token_write_fd, "T", 1);
         createClient(200, 7, PIR_PIN2);
     }
 }
