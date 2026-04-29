@@ -17,7 +17,7 @@ static int motion_detected_count = 0;
 static bool is_sending = false; // Lock variable
 static bool breakKeepAliveLoop = false;
 // motionDetectionCallback
-int createClient(uint16_t blink_duration, uint16_t blink_count);
+int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin);
 bool coinFLip()
 {
     srand(time(NULL));
