@@ -183,7 +183,7 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
 
         uint16_t blinkDurACK = ntohs(netDur);
         uint16_t blinkCountACK = ntohs(netCount);
-        if (blinkDurACK != BLINK_DURATION_MS || blinkCountACK != BLINK_COUNT)
+        if (blinkDurACK != blink_duration || blinkCountACK != blink_count)
         {
             printf("blinkDurACK != sentDur || blinkCountACK != sentCount, retransmit?\n");
             continue;
