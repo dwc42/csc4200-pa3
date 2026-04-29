@@ -428,6 +428,12 @@ bool startListening(int server_socket, ServerConfig serverConfig, struct sockadd
 				// exit(EXIT_FAILURE);
 				continue;
 			}
+			struct timeval timeout = {0, 0};
+			if (setsockopt(worker_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0)
+			{
+				perror("setsockopt failed");
+				continue;
+			}
 			ConnectionData connectionData = {&worker_addr, &client_addr, &clientISN, &initialSequenceNumber};
 			callback(worker_socket, serverConfig, connectionData);
 			break;
