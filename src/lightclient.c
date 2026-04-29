@@ -1,4 +1,5 @@
 #include "../include/protocol.h"
+#include <errno.h>
 #include <fcntl.h>
 
 // GPIO Configuration
@@ -29,13 +30,28 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin);
 void motionDetectionCallback(void *aux)
 {
     char token;
-    if (read(token_read_fd, &token, 1) <= 0)
-        return;
+    if (token_read_fd >= 0)
+    {
+        int64_t token_read = read(token_read_fd, &token, 1);
+        if (token_read == 0)
+        {
+            // Peer exited; stop alternating and handle locally.
+            token_read_fd = -1;
+            token_write_fd = -1;
+        }
+        else if (token_read < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return;
+            return;
+        }
+    }
     // Check lock var if currently sending
     // printf("motion\n");
     if (is_sending)
     {
-        write(token_write_fd, "T", 1);
+        if (token_write_fd >= 0)
+            write(token_write_fd, "T", 1);
         return;
     }
     uint8_t pin = aux == NULL ? -1 : ((MotionEventAux *)aux)->pin;
@@ -107,7 +123,8 @@ void motionDetectionCallback(void *aux)
     }
 
     is_sending = false; // Release lock
-    write(token_write_fd, "T", 1);
+    if (token_write_fd >= 0)
+        write(token_write_fd, "T", 1);
 }
 int main(int argc, char *argv[])
 {
