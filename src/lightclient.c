@@ -6,8 +6,7 @@
 #define PIR_PIN2 22
 #define BLINK_DURATION_MS 500
 #define BLINK_COUNT 5
-#define MAX_MOTION_COUNT 10
-#define MAX_MOTION_COUNT 10
+#define MAX_MOTION_COUNT 1
 // Global state for the motion callback
 static int client_socket;
 static struct sockaddr_in server_addr;
