@@ -75,8 +75,11 @@ void motionDetectionCallback(void *aux)
         pkt.payload = ":MotionDetected";
 
         char *raw = packet_serialize(pkt, payloadLength);
-        sendto(client_socket, raw, HEADER_SIZE + payloadLength, 0,
-               (struct sockaddr *)&server_addr, addr_len);
+        if (sendto(client_socket, raw, HEADER_SIZE + payloadLength, 0, (struct sockaddr *)&server_addr, addr_len) < 0)
+        {
+            perror("MotionDetected send failed");
+            continue;
+        }
         log_packet(pkt, cfg.logfilePath, Send);
         free(raw);
 
@@ -110,7 +113,10 @@ void motionDetectionCallback(void *aux)
         finPkt.header.noMoreData = 1;
 
         char *finRaw = packet_serialize(finPkt, 0);
-        sendto(client_socket, finRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, addr_len);
+        if (sendto(client_socket, finRaw, HEADER_SIZE, 0, (struct sockaddr *)&server_addr, addr_len) < 0)
+        {
+            perror("fin packet send failed");
+        }
         log_packet(finPkt, cfg.logfilePath, Send);
         free(finRaw);
         breakKeepAliveLoop = true;
@@ -203,7 +209,11 @@ int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
         p.payload = (char *)params;
 
         char *raw = packet_serialize(p, 4);
-        sendto(client_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)&server_addr, sizeof(server_addr));
+        if (sendto(client_socket, raw, HEADER_SIZE + 4, 0, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+        {
+            perror("LED params send failed");
+            continue;
+        }
         log_packet(p, cfg.logfilePath, Send);
         free(raw);
 

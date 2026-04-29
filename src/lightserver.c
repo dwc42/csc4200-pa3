@@ -43,7 +43,11 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             finAck.header.noMoreData = 1;
 
             char *raw = packet_serialize(finAck, 0);
-            sendto(worker_socket, raw, HEADER_SIZE, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
+            if (sendto(worker_socket, raw, HEADER_SIZE, 0, (struct sockaddr *)connectionData.client_addr, addr_len) < 0)
+            {
+                perror("send led finAck send failed");
+                continue;
+            }
             log_packet(finAck, serverConfig.logfilePath, Send);
 
             char ip[INET_ADDRSTRLEN];
@@ -76,7 +80,11 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             ack.payload = pkt.payload;
             int64_t payloadLength = LED_PARAM_PAYLOAD_LENGTH;
             char *raw = packet_serialize(ack, payloadLength);
-            sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0, (struct sockaddr *)connectionData.client_addr, addr_len);
+            if (sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0, (struct sockaddr *)connectionData.client_addr, addr_len) < 0)
+            {
+                perror("send led ack send failed");
+                continue;
+            }
             log_packet(ack, serverConfig.logfilePath, Send);
 
             server_seq += 4;
@@ -98,8 +106,12 @@ void onConnectionCallback(int worker_socket, ServerConfig serverConfig, Connecti
             ack.payload = pkt.payload;
 
             char *raw = packet_serialize(ack, payloadLength);
-            sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0,
-                   (struct sockaddr *)connectionData.client_addr, addr_len);
+            if (sendto(worker_socket, raw, HEADER_SIZE + payloadLength, 0,
+                       (struct sockaddr *)connectionData.client_addr, addr_len) < 0)
+            {
+                perror("motion blinking ack send failed");
+                continue;
+            }
             log_packet(ack, serverConfig.logfilePath, Send);
 
             server_seq += payloadLength;
