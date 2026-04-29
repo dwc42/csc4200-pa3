@@ -54,6 +54,10 @@ const code_dest = path.resolve("../infrastructure-setup-dwc42/assignment-3-detec
 code_paths.forEach(code_path => {
 	console.log(code_dest, code_path);
 	copyRecursiveSync(code_path, code_dest, undefined, true);
-	rmSync(path.join(code_dest, "node"), { "recursive": true });
+	try {
+		rmSync(path.join(code_dest, "src", "node"), { "recursive": true });
+	} catch {
+
+	}
 });
-writeSync(path.join(code_dest, "Makefile"), fs.readFileSync(path.resolve("./Makefile")));
+fs.writeFileSync(path.join(code_dest, "Makefile"), fs.readFileSync(path.resolve("./Makefile")));

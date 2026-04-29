@@ -268,10 +268,10 @@ Most HC-SR501 PIR modules (the standard one used with Pi projects) have **two or
 
 ### The two potentiometers
 
-| Knob | Label | Controls | Range |
-|---|---|---|---|
-| Left (closer to dome edge) | Sx / Sensitivity | Detection distance | ~3 m (full CCW) to ~7 m (full CW) |
-| Right (closer to pins) | Tx / Time delay | How long OUT stays HIGH after motion stops | ~3 s (full CCW) to ~300 s (full CW) |
+| Knob                       | Label            | Controls                                   | Range                               |
+| -------------------------- | ---------------- | ------------------------------------------ | ----------------------------------- |
+| Left (closer to dome edge) | Sx / Sensitivity | Detection distance                         | ~3 m (full CCW) to ~7 m (full CW)   |
+| Right (closer to pins)     | Tx / Time delay  | How long OUT stays HIGH after motion stops | ~3 s (full CCW) to ~300 s (full CW) |
 
 For this assignment, turn the **Tx knob all the way counter-clockwise** (minimum delay ~3 s). This means after motion stops, the sensor goes LOW again quickly — useful for repeated testing without waiting minutes. Turn **Sx to about the middle** to start; adjust if it isn't triggering or is triggering too easily.
 
@@ -279,10 +279,10 @@ For this assignment, turn the **Tx knob all the way counter-clockwise** (minimum
 
 The small jumper between the two potentiometers selects one of two modes:
 
-| Jumper position | Mode | Behavior |
-|---|---|---|
-| H (pins 1–2) | Repeatable trigger | OUT stays HIGH and resets its timer as long as motion continues. Best for this project. |
-| L (pins 2–3) | Non-repeatable trigger | OUT goes HIGH once, then LOW after the time delay, regardless of ongoing motion. |
+| Jumper position | Mode                   | Behavior                                                                                |
+| --------------- | ---------------------- | --------------------------------------------------------------------------------------- |
+| H (pins 1–2)    | Repeatable trigger     | OUT stays HIGH and resets its timer as long as motion continues. Best for this project. |
+| L (pins 2–3)    | Non-repeatable trigger | OUT goes HIGH once, then LOW after the time delay, regardless of ongoing motion.        |
 
 Set the jumper to **H** for this assignment. In L mode, if someone is standing in front of the sensor, OUT goes LOW after the delay and your client's polling loop would stop detecting — you'd miss continuous presence. H mode keeps OUT HIGH as long as motion is detected, which maps naturally to a polling loop.
 
