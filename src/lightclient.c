@@ -26,7 +26,7 @@ typedef struct MotionEventAux
 int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin);
 bool coinFLip()
 {
-    srand(time(NULL));
+    srand((unsigned)time(NULL) ^ getpid());
 
     // rand() % 2 returns 0 or 1
     return rand() % 2 == 1;
