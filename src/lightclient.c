@@ -2,6 +2,7 @@
 
 // GPIO Configuration
 #define PIR_PIN 27
+#define PIR_PIN2 22
 #define BLINK_DURATION_MS 500
 #define BLINK_COUNT 5
 #define MAX_MOTION_COUNT 10
@@ -113,23 +114,23 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     setupGPIO();
-    setPin(PIR_PIN);
     int pid = fork();
     if (pid < 0)
         exit(EXIT_FAILURE);
     if (!pid)
     {
-        createClient(500, 5);
+        createClient(500, 5, PIR_PIN);
     }
     else
     {
-        createClient(200, 7);
+        createClient(200, 7, PIR_PIN2);
     }
 }
 
-int createClient(uint16_t blink_duration, uint16_t blink_count)
+int createClient(uint16_t blink_duration, uint16_t blink_count, uint8_t pin)
 {
 
+    setPin(pin);
     breakKeepAliveLoop = false;
     is_sending = false;
 
